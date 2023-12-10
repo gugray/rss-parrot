@@ -57,7 +57,7 @@ func NewMux(routes []Route) *mux.Router {
 	return r
 }
 
-func writeResponse(w http.ResponseWriter, r *http.Request, resp interface{}) {
+func writeResponse(w http.ResponseWriter, resp interface{}) {
 	var err error
 	var respJson []byte
 	if respJson, err = json.Marshal(resp); err != nil {

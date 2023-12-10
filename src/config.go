@@ -36,6 +36,10 @@ func (cfg *config) GetBirbPubkey() string {
 	return cfg.BirbPubkey
 }
 
+func (cfg *config) GetBirbPrivkey() string {
+	return cfg.BirbPrivkey
+}
+
 func provideConfig() *config {
 	cfgPath := os.Getenv(configVarName)
 	if len(cfgPath) == 0 {

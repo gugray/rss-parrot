@@ -32,5 +32,5 @@ func (h *UsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, r, userInfo)
+	writeResponse(w, userInfo)
 }

@@ -45,5 +45,5 @@ func (h *WebfingerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeResponse(w, r, resp)
+	writeResponse(w, resp)
 }

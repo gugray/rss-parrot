@@ -23,8 +23,11 @@ func main() {
 			logic.NewWebfinger,
 			newUserDirectoryConfig,
 			logic.NewUserDirectory,
+			newActivitySenderConfig,
+			logic.NewActivitySender,
 			asRoute(server.NewWebfingerHandler),
 			asRoute(server.NewUsersHandler),
+			asRoute(server.NewBeepHandler),
 		),
 		fx.Invoke(
 			initLogger,
@@ -53,6 +56,10 @@ func newWebfingerConfig(cfg *config) logic.WebfingerConfig {
 
 func newUserDirectoryConfig(cfg *config) logic.UserDirectoryConfig {
 	return logic.UserDirectoryConfig(cfg)
+}
+
+func newActivitySenderConfig(cfg *config) logic.ActivitySenderConfig {
+	return logic.ActivitySenderConfig(cfg)
 }
 
 func initLogger(cfg *config) {
