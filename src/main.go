@@ -8,19 +8,23 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"rss_parrot/internal"
+	"rss_parrot/logic"
+	"rss_parrot/server"
 )
 
 func main() {
 	app := fx.New(
 		fx.Provide(
-			internal.ProvideConfig,
+			provideConfig,
 			newServerConfig,
-			internal.NewHTTPServer,
-			fx.Annotate(internal.NewMux, fx.ParamTags(`group:"routes"`)),
-			//asRoute(internal.NewEchoHandler),
-			newWebfingerHandlerConfig,
-			asRoute(internal.NewWebfingerHandler),
+			server.NewHTTPServer,
+			fx.Annotate(server.NewMux, fx.ParamTags(`group:"routes"`)),
+			newWebfingerConfig,
+			logic.NewWebfinger,
+			newUserDirectoryConfig,
+			logic.NewUserDirectory,
+			asRoute(server.NewWebfingerHandler),
+			asRoute(server.NewUsersHandler),
 		),
 		fx.Invoke(
 			initLogger,
@@ -34,20 +38,24 @@ func main() {
 func asRoute(f any) any {
 	return fx.Annotate(
 		f,
-		fx.As(new(internal.Route)),
+		fx.As(new(server.Route)),
 		fx.ResultTags(`group:"routes"`),
 	)
 }
 
-func newServerConfig(cfg *internal.Config) internal.ServerConfig {
-	return internal.ServerConfig(cfg)
+func newServerConfig(cfg *config) server.ServerConfig {
+	return server.ServerConfig(cfg)
 }
 
-func newWebfingerHandlerConfig(cfg *internal.Config) internal.WebfingerHandlerConfig {
-	return internal.WebfingerHandlerConfig(cfg)
+func newWebfingerConfig(cfg *config) logic.WebfingerConfig {
+	return logic.WebfingerConfig(cfg)
 }
 
-func initLogger(cfg *internal.Config) {
+func newUserDirectoryConfig(cfg *config) logic.UserDirectoryConfig {
+	return logic.UserDirectoryConfig(cfg)
+}
+
+func initLogger(cfg *config) {
 	logFile, err := os.OpenFile(cfg.LogFile, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to open log file '%v': %v", cfg.LogFile, err)
