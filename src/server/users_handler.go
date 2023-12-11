@@ -8,10 +8,10 @@ import (
 )
 
 type UsersHandler struct {
-	ud *logic.UserDirectory
+	ud logic.IUserDirectory
 }
 
-func NewUsersHandler(ud *logic.UserDirectory) *UsersHandler {
+func NewUsersHandler(ud logic.IUserDirectory) *UsersHandler {
 	return &UsersHandler{ud}
 }
 

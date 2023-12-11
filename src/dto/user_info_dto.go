@@ -6,6 +6,7 @@ type UserInfo struct {
 	Type              string    `json:"type"`
 	PreferredUserName string    `json:"preferredUsername"`
 	Inbox             string    `json:"inbox"`
+	Outbox            string    `json:"outbox"`
 	PublicKey         PublicKey `json:"publicKey"`
 }
 

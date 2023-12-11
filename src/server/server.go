@@ -9,7 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"rss_parrot/logic"
+	"rss_parrot/config"
 	"strconv"
 )
 
@@ -24,7 +24,7 @@ type Route interface {
 	Def() (string, string)
 }
 
-func NewHTTPServer(cfg *logic.Config, lc fx.Lifecycle, router *mux.Router) *http.Server {
+func NewHTTPServer(cfg *config.Config, lc fx.Lifecycle, router *mux.Router) *http.Server {
 	addStr := ":" + strconv.FormatUint(uint64(cfg.ServicePort), 10)
 	srv := &http.Server{Addr: addStr, Handler: router}
 	lc.Append(fx.Hook{

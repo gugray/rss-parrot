@@ -9,10 +9,10 @@ import (
 )
 
 type BeepHandler struct {
-	sender *logic.ActivitySender
+	sender logic.IActivitySender
 }
 
-func NewBeepHandler(sender *logic.ActivitySender) *BeepHandler {
+func NewBeepHandler(sender logic.IActivitySender) *BeepHandler {
 	return &BeepHandler{sender}
 }
 

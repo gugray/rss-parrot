@@ -9,16 +9,21 @@ import (
 	"github.com/go-fed/httpsig"
 	"io"
 	"net/http"
+	"rss_parrot/config"
 	"rss_parrot/dto"
 	"strings"
 	"time"
 )
 
-type ActivitySender struct {
-	cfg *Config
+type IActivitySender interface {
+	Send(inboxUrl string, activity dto.Activity) error
 }
 
-func NewActivitySender(cfg *Config) *ActivitySender {
+type ActivitySender struct {
+	cfg *config.Config
+}
+
+func NewActivitySender(cfg *config.Config) IActivitySender {
 	return &ActivitySender{cfg}
 }
 

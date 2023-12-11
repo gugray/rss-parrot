@@ -2,15 +2,20 @@ package logic
 
 import (
 	"fmt"
+	"rss_parrot/config"
 	"rss_parrot/dto"
 	"strings"
 )
 
-type Webfinger struct {
-	cfg *Config
+type IWebfinger interface {
+	MakeResponse(user, instance string) *dto.WebfingerResp
 }
 
-func NewWebfinger(cfg *Config) *Webfinger {
+type Webfinger struct {
+	cfg *config.Config
+}
+
+func NewWebfinger(cfg *config.Config) IWebfinger {
 	return &Webfinger{cfg}
 }
 

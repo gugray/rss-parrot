@@ -2,16 +2,23 @@ package logic
 
 import (
 	"fmt"
+	"rss_parrot/config"
+	"rss_parrot/dal"
 	"rss_parrot/dto"
 	"strings"
 )
 
-type UserDirectory struct {
-	cfg *Config
+type IUserDirectory interface {
+	GetUserInfo(user string) *dto.UserInfo
 }
 
-func NewUserDirectory(cfg *Config) *UserDirectory {
-	return &UserDirectory{cfg}
+type UserDirectory struct {
+	cfg  *config.Config
+	repo dal.IRepo
+}
+
+func NewUserDirectory(cfg *config.Config, repo dal.IRepo) IUserDirectory {
+	return &UserDirectory{cfg, repo}
 }
 
 func (udir *UserDirectory) GetUserInfo(user string) *dto.UserInfo {
@@ -34,6 +41,7 @@ func (udir *UserDirectory) GetUserInfo(user string) *dto.UserInfo {
 		Type:              "Person",
 		PreferredUserName: user,
 		Inbox:             fmt.Sprintf("%s/inbox", userId),
+		Outbox:            fmt.Sprintf("%s/outbox", userId),
 		PublicKey: dto.PublicKey{
 			Id:           fmt.Sprintf("%s#main-key", userId),
 			Owner:        userId,

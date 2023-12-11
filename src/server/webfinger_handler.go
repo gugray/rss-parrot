@@ -8,11 +8,11 @@ import (
 )
 
 type WebfingerHandler struct {
-	wf         *logic.Webfinger
+	wf         logic.IWebfinger
 	reResource *regexp.Regexp
 }
 
-func NewWebfingerHandler(wf *logic.Webfinger) *WebfingerHandler {
+func NewWebfingerHandler(wf logic.IWebfinger) *WebfingerHandler {
 	reResource := regexp.MustCompile("^acct:([^@]+)@([^@]+)$")
 	return &WebfingerHandler{
 		wf,

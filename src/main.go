@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"rss_parrot/config"
+	"rss_parrot/dal"
 	"rss_parrot/logic"
 	"rss_parrot/server"
 )
@@ -15,14 +17,17 @@ import (
 func main() {
 	app := fx.New(
 		fx.Provide(
-			logic.ProvideConfig,
+			config.ProvideConfig,
 			server.NewHTTPServer,
 			fx.Annotate(server.NewMux, fx.ParamTags(`group:"routes"`)),
 			logic.NewWebfinger,
 			logic.NewUserDirectory,
 			logic.NewActivitySender,
+			logic.NewOutbox,
+			dal.NewRepo,
 			asRoute(server.NewWebfingerHandler),
 			asRoute(server.NewUsersHandler),
+			asRoute(server.NewOutboxHandler),
 			asRoute(server.NewBeepHandler),
 		),
 		fx.Invoke(
@@ -42,7 +47,7 @@ func asRoute(f any) any {
 	)
 }
 
-func initLogger(cfg *logic.Config) {
+func initLogger(cfg *config.Config) {
 	logFile, err := os.OpenFile(cfg.LogFile, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to open log file '%v': %v", cfg.LogFile, err)
