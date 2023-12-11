@@ -6,24 +6,18 @@ import (
 	"strings"
 )
 
-type UserDirectoryConfig interface {
-	GetInstanceName() string
-	GetBirbName() string
-	GetBirbPubkey() string
-}
-
 type UserDirectory struct {
-	cfg UserDirectoryConfig
+	cfg *Config
 }
 
-func NewUserDirectory(cfg UserDirectoryConfig) *UserDirectory {
+func NewUserDirectory(cfg *Config) *UserDirectory {
 	return &UserDirectory{cfg}
 }
 
 func (udir *UserDirectory) GetUserInfo(user string) *dto.UserInfo {
 
-	cfgInstance := udir.cfg.GetInstanceName()
-	cfgBirb := udir.cfg.GetBirbName()
+	cfgInstance := udir.cfg.InstanceName
+	cfgBirb := udir.cfg.BirbName
 	if !strings.EqualFold(user, cfgBirb) {
 		return nil
 	}
@@ -43,7 +37,7 @@ func (udir *UserDirectory) GetUserInfo(user string) *dto.UserInfo {
 		PublicKey: dto.PublicKey{
 			Id:           fmt.Sprintf("%s#main-key", userId),
 			Owner:        userId,
-			PublicKeyPem: udir.cfg.GetBirbPubkey(),
+			PublicKeyPem: udir.cfg.BirbPubkey,
 		},
 	}
 	return &resp

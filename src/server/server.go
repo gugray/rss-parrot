@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"rss_parrot/logic"
 	"strconv"
 )
 
@@ -18,17 +19,13 @@ const (
 	notFoundStr       = "Not Found"
 )
 
-type ServerConfig interface {
-	GetServicePort() uint
-}
-
 type Route interface {
 	http.Handler
 	Def() (string, string)
 }
 
-func NewHTTPServer(cfg ServerConfig, lc fx.Lifecycle, router *mux.Router) *http.Server {
-	addStr := ":" + strconv.FormatUint(uint64(cfg.GetServicePort()), 10)
+func NewHTTPServer(cfg *logic.Config, lc fx.Lifecycle, router *mux.Router) *http.Server {
+	addStr := ":" + strconv.FormatUint(uint64(cfg.ServicePort), 10)
 	srv := &http.Server{Addr: addStr, Handler: router}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

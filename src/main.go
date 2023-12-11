@@ -15,15 +15,11 @@ import (
 func main() {
 	app := fx.New(
 		fx.Provide(
-			provideConfig,
-			newServerConfig,
+			logic.ProvideConfig,
 			server.NewHTTPServer,
 			fx.Annotate(server.NewMux, fx.ParamTags(`group:"routes"`)),
-			newWebfingerConfig,
 			logic.NewWebfinger,
-			newUserDirectoryConfig,
 			logic.NewUserDirectory,
-			newActivitySenderConfig,
 			logic.NewActivitySender,
 			asRoute(server.NewWebfingerHandler),
 			asRoute(server.NewUsersHandler),
@@ -46,23 +42,7 @@ func asRoute(f any) any {
 	)
 }
 
-func newServerConfig(cfg *config) server.ServerConfig {
-	return server.ServerConfig(cfg)
-}
-
-func newWebfingerConfig(cfg *config) logic.WebfingerConfig {
-	return logic.WebfingerConfig(cfg)
-}
-
-func newUserDirectoryConfig(cfg *config) logic.UserDirectoryConfig {
-	return logic.UserDirectoryConfig(cfg)
-}
-
-func newActivitySenderConfig(cfg *config) logic.ActivitySenderConfig {
-	return logic.ActivitySenderConfig(cfg)
-}
-
-func initLogger(cfg *config) {
+func initLogger(cfg *logic.Config) {
 	logFile, err := os.OpenFile(cfg.LogFile, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to open log file '%v': %v", cfg.LogFile, err)

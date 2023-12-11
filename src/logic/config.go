@@ -1,4 +1,4 @@
-package main
+package logic
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ const (
 	devConfigPath = "config.dev.json" // Path to config.json in development environment
 )
 
-type config struct {
+type Config struct {
 	LogFile      string `json:"log_file"`
 	ServicePort  uint   `json:"service_port"`
 	InstanceName string `json:"instance_name"`
@@ -20,27 +20,7 @@ type config struct {
 	BirbPrivkey  string `json:"birb_privkey"`
 }
 
-func (cfg *config) GetServicePort() uint {
-	return cfg.ServicePort
-}
-
-func (cfg *config) GetInstanceName() string {
-	return cfg.InstanceName
-}
-
-func (cfg *config) GetBirbName() string {
-	return cfg.BirbName
-}
-
-func (cfg *config) GetBirbPubkey() string {
-	return cfg.BirbPubkey
-}
-
-func (cfg *config) GetBirbPrivkey() string {
-	return cfg.BirbPrivkey
-}
-
-func provideConfig() *config {
+func ProvideConfig() *Config {
 	cfgPath := os.Getenv(configVarName)
 	if len(cfgPath) == 0 {
 		cfgPath = devConfigPath
@@ -49,7 +29,7 @@ func provideConfig() *config {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var config config
+	var config Config
 	if err := json.Unmarshal(cfgJson, &config); err != nil {
 		log.Fatal(err)
 	}

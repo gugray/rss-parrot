@@ -14,17 +14,11 @@ import (
 	"time"
 )
 
-type ActivitySenderConfig interface {
-	GetInstanceName() string
-	GetBirbName() string
-	GetBirbPrivkey() string
-}
-
 type ActivitySender struct {
-	cfg ActivitySenderConfig
+	cfg *Config
 }
 
-func NewActivitySender(cfg ActivitySenderConfig) *ActivitySender {
+func NewActivitySender(cfg *Config) *ActivitySender {
 	return &ActivitySender{cfg}
 }
 
@@ -51,13 +45,13 @@ func (sender *ActivitySender) Send(inboxUrl string, activity dto.Activity) error
 	if err != nil {
 		return err
 	}
-	privkeyStr := sender.cfg.GetBirbPrivkey()
+	privkeyStr := sender.cfg.BirbPrivkey
 	block, _ := pem.Decode([]byte(privkeyStr))
 	privkey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
 		return err
 	}
-	keyId := fmt.Sprintf("https://%s/users/%s#main-key", sender.cfg.GetInstanceName(), sender.cfg.GetBirbName())
+	keyId := fmt.Sprintf("https://%s/users/%s#main-key", sender.cfg.InstanceName, sender.cfg.BirbName)
 	err = signer.SignRequest(privkey, keyId, req, bodyJson)
 	if err != nil {
 		return err

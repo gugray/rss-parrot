@@ -6,22 +6,17 @@ import (
 	"strings"
 )
 
-type WebfingerConfig interface {
-	GetInstanceName() string
-	GetBirbName() string
-}
-
 type Webfinger struct {
-	cfg WebfingerConfig
+	cfg *Config
 }
 
-func NewWebfinger(cfg WebfingerConfig) *Webfinger {
+func NewWebfinger(cfg *Config) *Webfinger {
 	return &Webfinger{cfg}
 }
 
 func (wf *Webfinger) MakeResponse(user, instance string) *dto.WebfingerResp {
-	cfgInstance := wf.cfg.GetInstanceName()
-	cfgBirb := wf.cfg.GetBirbName()
+	cfgInstance := wf.cfg.InstanceName
+	cfgBirb := wf.cfg.BirbName
 
 	if !strings.EqualFold(instance, cfgInstance) || !strings.EqualFold(user, cfgBirb) {
 		return nil
