@@ -8,19 +8,26 @@ import (
 	"rss_parrot/logic"
 )
 
-type BeepHandler struct {
+type cmdbHandlerGroup struct {
 	sender logic.IActivitySender
 }
 
-func NewBeepHandler(sender logic.IActivitySender) *BeepHandler {
-	return &BeepHandler{sender}
+func NewCmdHandlerGroup(
+	sender logic.IActivitySender,
+) IHandlerGroup {
+	res := cmdbHandlerGroup{
+		sender: sender,
+	}
+	return &res
 }
 
-func (*BeepHandler) Def() (string, string) {
-	return "GET", "/beep"
+func (cmd *cmdbHandlerGroup) GroupDefs() []handlerDef {
+	return []handlerDef{
+		{"GET", "/cmd/beep", func(w http.ResponseWriter, r *http.Request) { cmd.getBeep(w, r) }},
+	}
 }
 
-func (h *BeepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (cmd *cmdbHandlerGroup) getBeep(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Beep: Request received")
 
@@ -48,7 +55,7 @@ func (h *BeepHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//	Object:  "https://toot.community/users/gaborparrot",
 	//}
 
-	err := h.sender.Send("https://toot.community/inbox", activity)
+	err := cmd.sender.Send("https://toot.community/inbox", activity)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintln(w, "Failed to post activity")

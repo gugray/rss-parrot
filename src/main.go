@@ -19,16 +19,14 @@ func main() {
 		fx.Provide(
 			config.ProvideConfig,
 			server.NewHTTPServer,
-			fx.Annotate(server.NewMux, fx.ParamTags(`group:"routes"`)),
+			fx.Annotate(server.NewMux, fx.ParamTags(`group:"handler_group"`)),
 			logic.NewWebfinger,
 			logic.NewUserDirectory,
 			logic.NewActivitySender,
 			logic.NewOutbox,
 			dal.NewRepo,
-			asRoute(server.NewWebfingerHandler),
-			asRoute(server.NewUsersHandler),
-			asRoute(server.NewOutboxHandler),
-			asRoute(server.NewBeepHandler),
+			asHandlerGroupDef(server.NewApubHandlerGroup),
+			asHandlerGroupDef(server.NewCmdHandlerGroup),
 		),
 		fx.Invoke(
 			initLogger,
@@ -39,11 +37,11 @@ func main() {
 	app.Run()
 }
 
-func asRoute(f any) any {
+func asHandlerGroupDef(f any) any {
 	return fx.Annotate(
 		f,
-		fx.As(new(server.Route)),
-		fx.ResultTags(`group:"routes"`),
+		fx.As(new(server.IHandlerGroup)),
+		fx.ResultTags(`group:"handler_group"`),
 	)
 }
 
