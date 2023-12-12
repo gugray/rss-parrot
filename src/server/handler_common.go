@@ -3,14 +3,16 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 )
 
 const (
-	internalErrorStr  = "Internal Server Error"
-	invalidRequestStr = "Invalid Request"
-	notFoundStr       = "Not Found"
+	internalErrorStr = "Internal Server Error"
+	badRequestStr    = "Invalid Request"
+	notFoundStr      = "Not Found"
+	unauthorizedStr  = "Authorization Error"
 )
 
 // Defines a single HTTP handler (endpoint)
@@ -39,4 +41,14 @@ func writeResponse(w http.ResponseWriter, resp interface{}) {
 		http.Error(w, internalErrorStr, http.StatusInternalServerError)
 		return
 	}
+}
+
+func readBody(w http.ResponseWriter, r *http.Request) []byte {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Failed to read request body: %v", err)
+		http.Error(w, badRequestStr, http.StatusBadRequest)
+		return nil
+	}
+	return body
 }

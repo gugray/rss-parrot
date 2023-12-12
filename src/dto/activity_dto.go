@@ -1,7 +1,20 @@
 package dto
 
-type Activity struct {
-	Context string `json:"@context"`
+type ActivityInBase struct {
+	Id    string `json:"id"`
+	Type  string `json:"type"`
+	Actor string `json:"actor"`
+}
+
+type ActivityInFollow struct {
+	Id     string `json:"id"`
+	Type   string `json:"type"`
+	Actor  string `json:"actor"`
+	Object string `json:"object"`
+}
+
+type ActivityOut struct {
+	Context any    `json:"@context"`
 	Id      string `json:"id"`
 	Type    string `json:"type"`
 	Actor   string `json:"actor"`

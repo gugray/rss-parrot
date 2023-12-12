@@ -16,18 +16,18 @@ import (
 )
 
 type IActivitySender interface {
-	Send(inboxUrl string, activity dto.Activity) error
+	Send(inboxUrl string, activity *dto.ActivityOut) error
 }
 
-type ActivitySender struct {
+type activitySender struct {
 	cfg *config.Config
 }
 
 func NewActivitySender(cfg *config.Config) IActivitySender {
-	return &ActivitySender{cfg}
+	return &activitySender{cfg}
 }
 
-func (sender *ActivitySender) Send(inboxUrl string, activity dto.Activity) error {
+func (sender *activitySender) Send(inboxUrl string, activity *dto.ActivityOut) error {
 
 	host := strings.Replace(inboxUrl, "https://", "", -1)
 	slashIx := strings.IndexByte(host, '/')

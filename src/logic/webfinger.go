@@ -11,15 +11,15 @@ type IWebfinger interface {
 	MakeResponse(user, instance string) *dto.WebfingerResp
 }
 
-type Webfinger struct {
+type webfinger struct {
 	cfg *config.Config
 }
 
 func NewWebfinger(cfg *config.Config) IWebfinger {
-	return &Webfinger{cfg}
+	return &webfinger{cfg}
 }
 
-func (wf *Webfinger) MakeResponse(user, instance string) *dto.WebfingerResp {
+func (wf *webfinger) MakeResponse(user, instance string) *dto.WebfingerResp {
 	cfgInstance := wf.cfg.InstanceName
 	cfgBirb := wf.cfg.BirbName
 

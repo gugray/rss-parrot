@@ -12,16 +12,16 @@ type IOutbox interface {
 	GetOutboxSummary(user string) *dto.OutboxSummary
 }
 
-type Outbox struct {
+type outbox struct {
 	cfg  *config.Config
 	repo dal.IRepo
 }
 
 func NewOutbox(cfg *config.Config, repo dal.IRepo) IOutbox {
-	return &Outbox{cfg, repo}
+	return &outbox{cfg, repo}
 }
 
-func (ob *Outbox) GetOutboxSummary(user string) *dto.OutboxSummary {
+func (ob *outbox) GetOutboxSummary(user string) *dto.OutboxSummary {
 
 	cfgInstance := ob.cfg.InstanceName
 	cfgBirb := ob.cfg.BirbName
@@ -36,6 +36,7 @@ func (ob *Outbox) GetOutboxSummary(user string) *dto.OutboxSummary {
 	resp := dto.OutboxSummary{
 		Context:    "https://www.w3.org/ns/activitystreams",
 		Id:         obUrl,
+		Type:       "OrderedCollection",
 		TotalItems: ob.repo.GetPostCount(),
 		First:      fmt.Sprintf("%s?page=true", obUrl),
 		Last:       fmt.Sprintf("%s?page=true&min_id=0", obUrl),

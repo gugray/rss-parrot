@@ -12,16 +12,16 @@ type IUserDirectory interface {
 	GetUserInfo(user string) *dto.UserInfo
 }
 
-type UserDirectory struct {
+type userDirectory struct {
 	cfg  *config.Config
 	repo dal.IRepo
 }
 
 func NewUserDirectory(cfg *config.Config, repo dal.IRepo) IUserDirectory {
-	return &UserDirectory{cfg, repo}
+	return &userDirectory{cfg, repo}
 }
 
-func (udir *UserDirectory) GetUserInfo(user string) *dto.UserInfo {
+func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 
 	cfgInstance := udir.cfg.InstanceName
 	cfgBirb := udir.cfg.BirbName
@@ -40,8 +40,15 @@ func (udir *UserDirectory) GetUserInfo(user string) *dto.UserInfo {
 		Id:                userId,
 		Type:              "Person",
 		PreferredUserName: user,
+		Name:              "Birby Mc Birb",
+		Summary:           "Psittaciform diversity in South America and Australasia suggests that the order may have evolved in Gondwana, centred in Australasia.",
+		ManuallyApproves:  false,
+		Published:         "2018-04-23T22:05:35Z",
 		Inbox:             fmt.Sprintf("%s/inbox", userId),
 		Outbox:            fmt.Sprintf("%s/outbox", userId),
+		Followers:         fmt.Sprintf("%s/followers", userId),
+		Following:         fmt.Sprintf("%s/following", userId),
+		Endpoints:         dto.UserEndpoints{SharedInbox: fmt.Sprintf("https://%s/inbox", cfgInstance)},
 		PublicKey: dto.PublicKey{
 			Id:           fmt.Sprintf("%s#main-key", userId),
 			Owner:        userId,

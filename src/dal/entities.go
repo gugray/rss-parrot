@@ -8,7 +8,8 @@ type Post struct {
 }
 
 type Follower struct {
-	User   string // https://genart.social/users/twilliability
-	Handle string // twilliability
-	Host   string // genart.social
+	User        string // https://genart.social/users/twilliability
+	Handle      string // twilliability
+	Host        string // genart.social
+	SharedInbox string // https://genart.social/inbox
 }

@@ -1,7 +1,7 @@
 package dto
 
 type OutboxSummary struct {
-	Context    string `json:"@context"`
+	Context    any    `json:"@context"`
 	Id         string `json:"id"`
 	Type       string `json:"type"`
 	TotalItems uint   `json:"totalItems"`
