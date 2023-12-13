@@ -2,8 +2,8 @@ package logic
 
 import (
 	"fmt"
-	"rss_parrot/config"
 	"rss_parrot/dto"
+	"rss_parrot/shared"
 	"strings"
 )
 
@@ -12,10 +12,10 @@ type IWebfinger interface {
 }
 
 type webfinger struct {
-	cfg *config.Config
+	cfg *shared.Config
 }
 
-func NewWebfinger(cfg *config.Config) IWebfinger {
+func NewWebfinger(cfg *shared.Config) IWebfinger {
 	return &webfinger{cfg}
 }
 

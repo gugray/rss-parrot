@@ -2,9 +2,9 @@ package logic
 
 import (
 	"fmt"
-	"rss_parrot/config"
 	"rss_parrot/dal"
 	"rss_parrot/dto"
+	"rss_parrot/shared"
 	"strings"
 )
 
@@ -13,11 +13,11 @@ type IOutbox interface {
 }
 
 type outbox struct {
-	cfg  *config.Config
+	cfg  *shared.Config
 	repo dal.IRepo
 }
 
-func NewOutbox(cfg *config.Config, repo dal.IRepo) IOutbox {
+func NewOutbox(cfg *shared.Config, repo dal.IRepo) IOutbox {
 	return &outbox{cfg, repo}
 }
 

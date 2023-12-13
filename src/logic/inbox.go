@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"rss_parrot/config"
 	"rss_parrot/dal"
 	"rss_parrot/dto"
+	"rss_parrot/shared"
 	"time"
 )
 
@@ -16,13 +16,13 @@ type IInbox interface {
 }
 
 type inbox struct {
-	cfg    *config.Config
+	cfg    *shared.Config
 	repo   dal.IRepo
 	sender IActivitySender
 }
 
 func NewInbox(
-	cfg *config.Config,
+	cfg *shared.Config,
 	repo dal.IRepo,
 	sender IActivitySender,
 ) IInbox {

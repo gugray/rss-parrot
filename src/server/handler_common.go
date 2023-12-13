@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
+	"rss_parrot/shared"
 )
 
 const (
@@ -28,25 +28,25 @@ type IHandlerGroup interface {
 }
 
 // Returns the JSON serialized object as the response body; handles errors.
-func writeResponse(w http.ResponseWriter, resp interface{}) {
+func writeResponse(logger shared.ILogger, w http.ResponseWriter, resp interface{}) {
 	var err error
 	var respJson []byte
 	if respJson, err = json.Marshal(resp); err != nil {
-		log.Printf("Failed to serialize response: %v\n", err)
+		logger.Warnf("Failed to serialize response: %v\n", err)
 		http.Error(w, internalErrorStr, http.StatusInternalServerError)
 		return
 	}
 	if _, err = fmt.Fprintln(w, string(respJson)); err != nil {
-		log.Printf("Failed to write response: %v\n", err)
+		logger.Warnf("Failed to write response: %v\n", err)
 		http.Error(w, internalErrorStr, http.StatusInternalServerError)
 		return
 	}
 }
 
-func readBody(w http.ResponseWriter, r *http.Request) []byte {
+func readBody(logger shared.ILogger, w http.ResponseWriter, r *http.Request) []byte {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Printf("Failed to read request body: %v", err)
+		logger.Warnf("Failed to read request body: %v", err)
 		http.Error(w, badRequestStr, http.StatusBadRequest)
 		return nil
 	}

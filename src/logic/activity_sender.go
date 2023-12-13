@@ -5,12 +5,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"github.com/go-fed/httpsig"
 	"io"
 	"net/http"
-	"rss_parrot/config"
 	"rss_parrot/dto"
+	"rss_parrot/shared"
 	"strings"
 	"time"
 )
@@ -20,11 +21,12 @@ type IActivitySender interface {
 }
 
 type activitySender struct {
-	cfg *config.Config
+	cfg    *shared.Config
+	logger shared.ILogger
 }
 
-func NewActivitySender(cfg *config.Config) IActivitySender {
-	return &activitySender{cfg}
+func NewActivitySender(cfg *shared.Config, logger shared.ILogger) IActivitySender {
+	return &activitySender{cfg, logger}
 }
 
 func (sender *activitySender) Send(inboxUrl string, activity *dto.ActivityOut) error {
@@ -67,11 +69,16 @@ func (sender *activitySender) Send(inboxUrl string, activity *dto.ActivityOut) e
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
+	// DBG
+	sender.logger.Debug(string(respBody))
 
 	if resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("activity POST request failed with status %s; response: %s", resp.Status, respBody)
+		msg := fmt.Sprintf("got status %s: response: %s", resp.Status, respBody)
+		sender.logger.Warnf("Activity POST failed: %s", msg)
+		return errors.New(msg)
 	}
 
 	return nil

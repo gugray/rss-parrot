@@ -3,16 +3,17 @@ package server
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"log"
 	"net/http"
 	"regexp"
 	"rss_parrot/dto"
 	"rss_parrot/logic"
+	"rss_parrot/shared"
 	"strconv"
 )
 
 // Groups together the handlers needed to implement an ActivityPub server.
 type apubHandlerGroup struct {
+	logger     shared.ILogger
 	sender     logic.IActivitySender
 	sigChecker logic.IHttpSigChecker
 	wfing      logic.IWebfinger
@@ -23,6 +24,7 @@ type apubHandlerGroup struct {
 }
 
 func NewApubHandlerGroup(
+	logger shared.ILogger,
 	sender logic.IActivitySender,
 	sigChecker logic.IHttpSigChecker,
 	wfing logic.IWebfinger,
@@ -31,6 +33,7 @@ func NewApubHandlerGroup(
 	ibox logic.IInbox,
 ) IHandlerGroup {
 	res := apubHandlerGroup{
+		logger:     logger,
 		sender:     sender,
 		sigChecker: sigChecker,
 		wfing:      wfing,
@@ -61,27 +64,27 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var err error
-	log.Printf("Inbox: POST request received: %s", r.URL.Path)
+	hg.logger.Info("Inbox: POST request received: %s", r.URL.Path)
 	userName := mux.Vars(r)["user"]
-	bodyBytes := readBody(w, r)
+	bodyBytes := readBody(hg.logger, w, r)
 	if bodyBytes == nil {
 		return
 	}
 
 	// DBG
-	log.Println(string(bodyBytes))
+	hg.logger.Debug(string(bodyBytes))
 
 	// First, parse a rudimentary version of the activity to find out what it is
 	var act dto.ActivityInBase
 	if err = json.Unmarshal(bodyBytes, &act); err != nil {
-		log.Printf("Invalid JSON in request body")
+		hg.logger.Info("Invalid JSON in request body")
 		http.Error(w, badRequestStr, http.StatusBadRequest)
 		return
 	}
 
 	// Does signer match actor?
 	if senderInfo.Id != act.Actor {
-		log.Printf("Activity signed by %s, but actor is %s", senderInfo.Id, act.Actor)
+		hg.logger.Warn("Activity signed by %s, but actor is %s", senderInfo.Id, act.Actor)
 		http.Error(w, unauthorizedStr, http.StatusUnauthorized)
 	}
 
@@ -91,19 +94,19 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 		badReq, err = hg.ibox.HandleFollow(userName, senderInfo, bodyBytes)
 	}
 	if badReq != nil {
-		log.Printf("Invalid request: %v", badReq)
+		hg.logger.Info("Invalid request: %v", badReq)
 		http.Error(w, badRequestStr, http.StatusBadRequest) // TODO: return message in JSON
 		return
 	}
 
-	writeResponse(w, "OK")
+	writeResponse(hg.logger, w, "OK")
 }
 
 func (hg *apubHandlerGroup) getOutbox(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err // But why?
-	log.Printf("Outbox: GET request received: %s", r.URL.Path)
+	hg.logger.Info("Outbox: GET request received: %s", r.URL.Path)
 	userName := mux.Vars(r)["user"]
 	pageParam := r.URL.Query().Get("page")
 	minId := -1
@@ -120,40 +123,40 @@ func (hg *apubHandlerGroup) getOutbox(w http.ResponseWriter, r *http.Request) {
 	_ = maxId
 
 	if pageParam == "true" { // TODO: page posts
-		log.Printf("Received ?page=true; not handled yet")
+		hg.logger.Info("Received ?page=true; not handled yet")
 		http.Error(w, internalErrorStr, http.StatusInternalServerError)
 		return
 	}
 
 	summary := hg.obox.GetOutboxSummary(userName)
 
-	writeResponse(w, summary)
+	writeResponse(hg.logger, w, summary)
 }
 
 func (hg *apubHandlerGroup) getUsers(w http.ResponseWriter, r *http.Request) {
 
-	log.Printf("Users: GET request received: %s", r.URL.Path)
+	hg.logger.Info("Users: GET request received: %s", r.URL.Path)
 	userName := mux.Vars(r)["user"]
 
 	userInfo := hg.udir.GetUserInfo(userName)
 
 	if userInfo == nil {
-		log.Printf("Users: No such user: '%s'", userName)
+		hg.logger.Info("Users: No such user: '%s'", userName)
 		http.Error(w, notFoundStr, http.StatusNotFound)
 		return
 	}
 
-	writeResponse(w, userInfo)
+	writeResponse(hg.logger, w, userInfo)
 }
 
 func (hg *apubHandlerGroup) getWebfinger(w http.ResponseWriter, r *http.Request) {
 
-	log.Printf("Webfinger: GET request received")
+	hg.logger.Info("Webfinger: GET request received")
 
 	resourceParam := r.URL.Query().Get("resource")
 	groups := hg.reResource.FindStringSubmatch(resourceParam)
 	if groups == nil {
-		log.Printf("Webfinger: Invalid request; 'resource' param is '%s'", resourceParam)
+		hg.logger.Info("Webfinger: Invalid request; 'resource' param is '%s'", resourceParam)
 		http.Error(w, badRequestStr, http.StatusBadRequest)
 		return
 	}
@@ -162,10 +165,10 @@ func (hg *apubHandlerGroup) getWebfinger(w http.ResponseWriter, r *http.Request)
 	resp := hg.wfing.MakeResponse(user, instance)
 
 	if resp == nil {
-		log.Printf("Webfinger: No such resource; 'resource' param is '%s'", resourceParam)
+		hg.logger.Info("Webfinger: No such resource; 'resource' param is '%s'", resourceParam)
 		http.Error(w, notFoundStr, http.StatusNotFound)
 		return
 	}
 
-	writeResponse(w, resp)
+	writeResponse(hg.logger, w, resp)
 }

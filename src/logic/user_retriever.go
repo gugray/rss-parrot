@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"rss_parrot/config"
 	"rss_parrot/dto"
+	"rss_parrot/shared"
 )
 
 type IUserRetriever interface {
@@ -14,10 +14,10 @@ type IUserRetriever interface {
 }
 
 type userRetriever struct {
-	cfg *config.Config
+	cfg *shared.Config
 }
 
-func NewUserRetriever(cfg *config.Config) IUserRetriever {
+func NewUserRetriever(cfg *shared.Config) IUserRetriever {
 	return &userRetriever{cfg}
 }
 

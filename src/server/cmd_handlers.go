@@ -2,20 +2,23 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"rss_parrot/dto"
 	"rss_parrot/logic"
+	"rss_parrot/shared"
 )
 
 type cmdbHandlerGroup struct {
+	logger shared.ILogger
 	sender logic.IActivitySender
 }
 
 func NewCmdHandlerGroup(
+	logger shared.ILogger,
 	sender logic.IActivitySender,
 ) IHandlerGroup {
 	res := cmdbHandlerGroup{
+		logger: logger,
 		sender: sender,
 	}
 	return &res
@@ -29,7 +32,7 @@ func (cmd *cmdbHandlerGroup) GroupDefs() []handlerDef {
 
 func (cmd *cmdbHandlerGroup) getBeep(w http.ResponseWriter, r *http.Request) {
 
-	log.Printf("Beep: Request received")
+	cmd.logger.Info("Beep: Request received")
 
 	//activity := dto.ActivityOut{
 	//	Context: "https://www.w3.org/ns/activitystreams",
@@ -49,7 +52,7 @@ func (cmd *cmdbHandlerGroup) getBeep(w http.ResponseWriter, r *http.Request) {
 
 	activity := dto.ActivityOut{
 		Context: "https://www.w3.org/ns/activitystreams",
-		Id:      "https://rss-parrot.zydeo.net/follow-43",
+		Id:      "https://rss-parrot.zydeo.net/follow-44",
 		Type:    "Follow",
 		Actor:   "https://rss-parrot.zydeo.net/users/birb03",
 		Object:  "https://toot.community/users/gaborparrot",

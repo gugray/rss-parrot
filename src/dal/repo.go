@@ -1,7 +1,7 @@
 package dal
 
 import (
-	"rss_parrot/config"
+	"rss_parrot/shared"
 	"time"
 )
 
@@ -15,12 +15,12 @@ type IRepo interface {
 }
 
 type Repo struct {
-	cfg       *config.Config
+	cfg       *shared.Config
 	posts     []*Post
 	followers []*Follower
 }
 
-func NewRepo(cfg *config.Config) IRepo {
+func NewRepo(cfg *shared.Config) IRepo {
 	repo := Repo{
 		cfg:       cfg,
 		posts:     []*Post{},

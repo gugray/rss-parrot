@@ -2,9 +2,9 @@ package logic
 
 import (
 	"fmt"
-	"rss_parrot/config"
 	"rss_parrot/dal"
 	"rss_parrot/dto"
+	"rss_parrot/shared"
 	"strings"
 )
 
@@ -13,11 +13,11 @@ type IUserDirectory interface {
 }
 
 type userDirectory struct {
-	cfg  *config.Config
+	cfg  *shared.Config
 	repo dal.IRepo
 }
 
-func NewUserDirectory(cfg *config.Config, repo dal.IRepo) IUserDirectory {
+func NewUserDirectory(cfg *shared.Config, repo dal.IRepo) IUserDirectory {
 	return &userDirectory{cfg, repo}
 }
 
