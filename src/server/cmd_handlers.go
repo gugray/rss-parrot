@@ -9,46 +9,45 @@ import (
 )
 
 type cmdbHandlerGroup struct {
-	logger shared.ILogger
-	sender logic.IActivitySender
+	cfg         *shared.Config
+	logger      shared.ILogger
+	sender      logic.IActivitySender
+	broadcaster logic.IBroadcaster
 }
 
 func NewCmdHandlerGroup(
+	cfg *shared.Config,
 	logger shared.ILogger,
 	sender logic.IActivitySender,
+	broadcaster logic.IBroadcaster,
 ) IHandlerGroup {
 	res := cmdbHandlerGroup{
-		logger: logger,
-		sender: sender,
+		cfg:         cfg,
+		logger:      logger,
+		sender:      sender,
+		broadcaster: broadcaster,
 	}
 	return &res
 }
 
 func (cmd *cmdbHandlerGroup) GroupDefs() []handlerDef {
 	return []handlerDef{
-		{"GET", "/cmd/beep", func(w http.ResponseWriter, r *http.Request) { cmd.getBeep(w, r) }},
+		{"GET", "/cmd/follow", func(w http.ResponseWriter, r *http.Request) { cmd.getFollow(w, r) }},
+		{"GET", "/cmd/toot", func(w http.ResponseWriter, r *http.Request) { cmd.getToot(w, r) }},
 	}
 }
 
-func (cmd *cmdbHandlerGroup) getBeep(w http.ResponseWriter, r *http.Request) {
+func (cmd *cmdbHandlerGroup) getToot(w http.ResponseWriter, r *http.Request) {
 
-	cmd.logger.Info("Beep: Request received")
+	cmd.logger.Info("Toot: Request received")
 
-	//activity := dto.ActivityOut{
-	//	Context: "https://www.w3.org/ns/activitystreams",
-	//	Id:      "https://rss-parrot.zydeo.net/users/birb/statuses/43/activity",
-	//	Type:    "Create",
-	//	Actor:   "https://rss-parrot.zydeo.net/users/birb",
-	//	Object: dto.Note{
-	//		Id:           "https://rss-parrot.zydeo.net/users/birb/statuses/43",
-	//		Type:         "Note",
-	//		Published:    "2023-12-10T21:15:31Z",
-	//		AttributedTo: "https://rss-parrot.zydeo.net/users/birb",
-	//		Content:      "<p><span class='h-card' translate='no'><a href='https://toot.community/@gaborparrot' class='u-url mention'>@<span>gaborparrot</span></a></span> Brezel boom boom</p>",
-	//		To:           []string{"https://toot.community/users/gaborparrot"},
-	//		Cc:           []string{},
-	//	},
-	//}
+	user := cmd.cfg.BirbName
+	cmd.broadcaster.Broadcast(user, "2023-12-13T21:40:37Z", "Hello, world! The bird is a-tooting.")
+}
+
+func (cmd *cmdbHandlerGroup) getFollow(w http.ResponseWriter, r *http.Request) {
+
+	cmd.logger.Info("Follow: Request received")
 
 	activity := dto.ActivityOut{
 		Context: "https://www.w3.org/ns/activitystreams",

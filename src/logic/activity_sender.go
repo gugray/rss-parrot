@@ -72,6 +72,7 @@ func (sender *activitySender) Send(inboxUrl string, activity *dto.ActivityOut) e
 
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
+	
 	// DBG
 	sender.logger.Debug(string(respBody))
 

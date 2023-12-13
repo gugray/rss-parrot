@@ -39,7 +39,7 @@ func (ib *inbox) HandleFollow(followedUserName string, senderInfo *dto.UserInfo,
 		return
 	}
 
-	var actFollow dto.ActivityInFollow
+	var actFollow dto.ActivityInStringObject
 	if jsonErr := json.Unmarshal(bodyBytes, &actFollow); jsonErr != nil {
 		log.Printf("Invalid JSON in Follow request body")
 		badReq = jsonErr
@@ -75,7 +75,7 @@ func (ib *inbox) HandleFollow(followedUserName string, senderInfo *dto.UserInfo,
 	return
 }
 
-func (ib *inbox) sendFollowAccept(inboxUrl string, actFollow *dto.ActivityInFollow) {
+func (ib *inbox) sendFollowAccept(inboxUrl string, actFollow *dto.ActivityInStringObject) {
 
 	time.Sleep(3000)
 

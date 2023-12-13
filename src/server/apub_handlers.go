@@ -64,7 +64,7 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var err error
-	hg.logger.Info("Inbox: POST request received: %s", r.URL.Path)
+	hg.logger.Infof("Inbox: POST request received: %s", r.URL.Path)
 	userName := mux.Vars(r)["user"]
 	bodyBytes := readBody(hg.logger, w, r)
 	if bodyBytes == nil {

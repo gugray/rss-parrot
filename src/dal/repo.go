@@ -2,10 +2,12 @@ package dal
 
 import (
 	"rss_parrot/shared"
+	"sync"
 	"time"
 )
 
 type IRepo interface {
+	GetNextId() uint64
 	GetPostCount() uint
 	GetPosts() []*Post
 	AddPost(post *Post)
@@ -18,6 +20,8 @@ type Repo struct {
 	cfg       *shared.Config
 	posts     []*Post
 	followers []*Follower
+	muId      sync.Mutex
+	nextId    uint64
 }
 
 func NewRepo(cfg *shared.Config) IRepo {
@@ -25,6 +29,7 @@ func NewRepo(cfg *shared.Config) IRepo {
 		cfg:       cfg,
 		posts:     []*Post{},
 		followers: []*Follower{},
+		nextId:    uint64(time.Now().UnixMilli()),
 	}
 	repo.addInitialData()
 	return &repo
@@ -40,6 +45,14 @@ func (repo *Repo) addInitialData() {
 	repo.followers = append(repo.followers, &Follower{
 		"https://genart.social/users/twilliability", "twilliability",
 		"genart.social", "https://genart.social/inbox"})
+}
+
+func (repo *Repo) GetNextId() uint64 {
+	repo.muId.Lock()
+	res := repo.nextId + 1
+	repo.nextId = res
+	repo.muId.Unlock()
+	return res
 }
 
 func (repo *Repo) GetPostCount() uint {
