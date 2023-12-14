@@ -156,7 +156,15 @@ func (hg *apubHandlerGroup) postUserInbox(w http.ResponseWriter, r *http.Request
 	// Verify signature
 	var senderInfo *dto.UserInfo
 	var sigProblem string
-	if senderInfo, sigProblem = hg.sigChecker.Check(w, r); sigProblem != "" {
+	senderInfo, sigProblem, err = hg.sigChecker.Check(w, r)
+
+	if err != nil {
+		hg.logger.Errorf("Unexpected error trying to verify signature: %v", err)
+		writeErrorResponse(w, internalErrorStr, http.StatusInternalServerError)
+		return
+	}
+
+	if sigProblem != "" {
 		hg.logger.Warnf("Incorrectly signed inbox POST request: %s", sigProblem)
 		msg := fmt.Sprintf("Invalid HTTP signature: %s", sigProblem)
 		writeErrorResponse(w, msg, http.StatusUnauthorized)
