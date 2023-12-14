@@ -57,7 +57,7 @@ func (cmd *cmdbHandlerGroup) getFollow(w http.ResponseWriter, r *http.Request) {
 		Object:  "https://toot.community/users/gaborparrot",
 	}
 
-	err := cmd.sender.Send("https://toot.community/inbox", &activity)
+	err := cmd.sender.Send(cmd.cfg.BirbName, "https://toot.community/inbox", &activity)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintln(w, "Failed to post activity")

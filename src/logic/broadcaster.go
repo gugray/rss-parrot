@@ -15,6 +15,7 @@ type broadcaster struct {
 	logger shared.ILogger
 	repo   dal.IRepo
 	sender IActivitySender
+	idb    idBuilder
 }
 
 func NewBroadcaster(
@@ -23,7 +24,7 @@ func NewBroadcaster(
 	repo dal.IRepo,
 	sender IActivitySender,
 ) IBroadcaster {
-	return &broadcaster{cfg, logger, repo, sender}
+	return &broadcaster{cfg, logger, repo, sender, idBuilder{cfg.Host}}
 }
 
 func (b *broadcaster) Broadcast(user, published, message string) error {
@@ -48,43 +49,25 @@ func (b *broadcaster) sendToInbox(addr, user, published, message string) {
 
 	b.logger.Infof("Sending to inbox: %s", addr)
 
-	cfgInstance := b.cfg.InstanceName
 	id := b.repo.GetNextId()
-	userUrl := fmtUserUrl(cfgInstance, user)
 	note := &dto.Note{
-		Id:           fmtUserStatus(cfgInstance, user, id),
+		Id:           b.idb.UserStatus(user, id),
 		Type:         "Note",
 		Published:    published,
 		Summary:      nil,
-		AttributedTo: userUrl,
+		AttributedTo: b.idb.UserUrl(user),
 		InReplyTo:    nil,
 		Content:      message,
 		To:           []string{"https://www.w3.org/ns/activitystreams#Public"},
-		Cc:           []string{fmtUserFollowers(cfgInstance, user)},
+		Cc:           []string{b.idb.UserFollowers(user)},
 	}
 	act := &dto.ActivityOut{
 		Context: "https://www.w3.org/ns/activitystreams",
-		Id:      fmtUserStatusActivity(cfgInstance, user, id),
+		Id:      b.idb.UserStatusActivity(user, id),
 		Type:    "Create",
-		Actor:   userUrl,
+		Actor:   b.idb.UserUrl(user),
 		Object:  note,
 	}
 
-	b.sender.Send(addr, act)
+	b.sender.Send(user, addr, act)
 }
-
-//func() {
-//	// Maps from shared inbox (one per instance) to list of users there
-//	inboxToUsers := make(map[string][]string)
-//
-//	// Collect who we'll be addressing in each instance
-//	followers := b.repo.GetFollowers()
-//	for _, f := range followers {
-//		var users []string
-//		if val, exists := inboxToUsers[f.SharedInbox]; exists {
-//			users = val
-//		}
-//		users = append(users, f.User)
-//		inboxToUsers[f.SharedInbox] = users
-//	}
-//}

@@ -13,13 +13,13 @@ const (
 )
 
 type Config struct {
-	LogFile      string `json:"log_file"`
-	LogLevel     string `json:"log_level"`
-	ServicePort  uint   `json:"service_port"`
-	InstanceName string `json:"instance_name"`
-	BirbName     string `json:"birb_name"`
-	BirbPubkey   string `json:"birb_pubkey"`
-	BirbPrivkey  string `json:"birb_privkey"`
+	LogFile     string `json:"log_file"`
+	LogLevel    string `json:"log_level"`
+	ServicePort uint   `json:"service_port"`
+	Host        string `json:"host"`
+	BirbName    string `json:"birb_name"`
+	BirbPubkey  string `json:"birb_pubkey"`
+	BirbPrivkey string `json:"birb_privkey"`
 }
 
 func LoadConfig() *Config {

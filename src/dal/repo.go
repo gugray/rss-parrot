@@ -11,6 +11,7 @@ type IRepo interface {
 	GetPostCount() uint
 	GetPosts() []*Post
 	AddPost(post *Post)
+	GetFollowerCount() uint
 	GetFollowers() []*Follower
 	AddFollower(follower *Follower)
 	RemoveFollower(user string)
@@ -65,6 +66,10 @@ func (repo *Repo) GetPosts() []*Post {
 
 func (repo *Repo) AddPost(post *Post) {
 	repo.posts = append(repo.posts, post)
+}
+
+func (repo *Repo) GetFollowerCount() uint {
+	return uint(len(repo.followers))
 }
 
 func (repo *Repo) GetFollowers() []*Follower {

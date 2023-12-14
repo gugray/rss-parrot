@@ -12,7 +12,6 @@ const (
 	internalErrorStr = "Internal Server Error"
 	badRequestStr    = "Invalid Request"
 	notFoundStr      = "Not Found"
-	unauthorizedStr  = "Authorization Error"
 )
 
 // Defines a single HTTP handler (endpoint)
@@ -28,7 +27,8 @@ type IHandlerGroup interface {
 }
 
 // Returns the JSON serialized object as the response body; handles errors.
-func writeResponse(logger shared.ILogger, w http.ResponseWriter, resp interface{}) {
+func writeJsonResponse(logger shared.ILogger, w http.ResponseWriter, resp interface{}) {
+	w.Header().Set("Content-Type", "application/json")
 	var err error
 	var respJson []byte
 	if respJson, err = json.Marshal(resp); err != nil {
@@ -41,6 +41,18 @@ func writeResponse(logger shared.ILogger, w http.ResponseWriter, resp interface{
 		http.Error(w, internalErrorStr, http.StatusInternalServerError)
 		return
 	}
+}
+
+type errorResp struct {
+	Error  string `json:"error"`
+	Status int    `json:"status"`
+}
+
+func writeErrorResponse(w http.ResponseWriter, msg string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	resp := errorResp{msg, code}
+	respJson, _ := json.Marshal(resp)
+	http.Error(w, string(respJson), code)
 }
 
 func readBody(logger shared.ILogger, w http.ResponseWriter, r *http.Request) []byte {

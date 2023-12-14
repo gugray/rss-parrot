@@ -17,19 +17,20 @@ import (
 )
 
 type IActivitySender interface {
-	Send(inboxUrl string, activity *dto.ActivityOut) error
+	Send(sendingUser, inboxUrl string, activity *dto.ActivityOut) error
 }
 
 type activitySender struct {
 	cfg    *shared.Config
 	logger shared.ILogger
+	idb    idBuilder
 }
 
 func NewActivitySender(cfg *shared.Config, logger shared.ILogger) IActivitySender {
-	return &activitySender{cfg, logger}
+	return &activitySender{cfg, logger, idBuilder{cfg.Host}}
 }
 
-func (sender *activitySender) Send(inboxUrl string, activity *dto.ActivityOut) error {
+func (sender *activitySender) Send(sendingUser, inboxUrl string, activity *dto.ActivityOut) error {
 
 	host := strings.Replace(inboxUrl, "https://", "", -1)
 	slashIx := strings.IndexByte(host, '/')
@@ -58,7 +59,7 @@ func (sender *activitySender) Send(inboxUrl string, activity *dto.ActivityOut) e
 	if err != nil {
 		return err
 	}
-	keyId := fmt.Sprintf("https://%s/users/%s#main-key", sender.cfg.InstanceName, sender.cfg.BirbName)
+	keyId := sender.idb.UserKeyId(sendingUser)
 	err = signer.SignRequest(privkey, keyId, req, bodyJson)
 	if err != nil {
 		return err
@@ -72,9 +73,9 @@ func (sender *activitySender) Send(inboxUrl string, activity *dto.ActivityOut) e
 
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
-	
+
 	// DBG
-	sender.logger.Debug(string(respBody))
+	//sender.logger.Debug(string(respBody))
 
 	if resp.StatusCode >= 300 {
 		msg := fmt.Sprintf("got status %s: response: %s", resp.Status, respBody)
