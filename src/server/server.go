@@ -19,7 +19,7 @@ func NewHTTPServer(cfg *shared.Config, logger shared.ILogger, lc fx.Lifecycle, r
 			if err != nil {
 				return err
 			}
-			logger.Printf("Starting HTTP server at %v\n", srv.Addr)
+			logger.Printf("Starting HTTP server at %v", srv.Addr)
 			go srv.Serve(listener)
 			return nil
 		},
@@ -38,6 +38,9 @@ func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
 			r.HandleFunc(def.pattern, def.handler).Methods(def.method)
 		}
 	}
+	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./www/")))
+	//r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handleFallback(logger, w, r) })
+	// TODO: Fix fallback so we get a log of missed requests
 	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handleFallback(logger, w, r) })
 	return r
 }

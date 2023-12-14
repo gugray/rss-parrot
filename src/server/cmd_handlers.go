@@ -41,7 +41,7 @@ func (cmd *cmdbHandlerGroup) getToot(w http.ResponseWriter, r *http.Request) {
 
 	cmd.logger.Info("Toot: Request received")
 
-	user := cmd.cfg.BirbName
+	user := cmd.cfg.Birb.User
 	cmd.broadcaster.Broadcast(user, "2023-12-13T21:40:37Z", "Hello, world! The bird is a-tooting.")
 }
 
@@ -57,7 +57,7 @@ func (cmd *cmdbHandlerGroup) getFollow(w http.ResponseWriter, r *http.Request) {
 		Object:  "https://toot.community/users/gaborparrot",
 	}
 
-	err := cmd.sender.Send(cmd.cfg.BirbName, "https://toot.community/inbox", &activity)
+	err := cmd.sender.Send(cmd.cfg.Birb.User, "https://toot.community/inbox", &activity)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintln(w, "Failed to post activity")

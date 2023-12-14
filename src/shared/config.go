@@ -5,21 +5,31 @@ import (
 	"github.com/tailscale/hujson"
 	"log"
 	"os"
+	"time"
 )
 
 const (
-	configVarName = "CONFIG"           // If set, will load config.json from this path and not from devConfigPath
-	devConfigPath = "config.dev.jsonc" // Path to config.json in development environment
+	configVarName = "CONFIG"                  // If set, will load config.json from this path and not from devConfigPath
+	devConfigPath = "../dev/config.dev.jsonc" // Path to config.json in development environment
 )
 
 type Config struct {
-	LogFile     string `json:"log_file"`
-	LogLevel    string `json:"log_level"`
-	ServicePort uint   `json:"service_port"`
-	Host        string `json:"host"`
-	BirbName    string `json:"birb_name"`
-	BirbPubkey  string `json:"birb_pubkey"`
-	BirbPrivkey string `json:"birb_privkey"`
+	LogFile     string    `json:"log_file"`
+	LogLevel    string    `json:"log_level"`
+	ServicePort uint      `json:"service_port"`
+	Host        string    `json:"host"`
+	Birb        *UserInfo `json:"birb"`
+}
+
+type UserInfo struct {
+	User       string    `json:"user"`
+	Name       string    `json:"name"`
+	Summary    string    `json:"summary"`
+	Published  time.Time `json:"published"`
+	ProfilePic string    `json:"profile_pic"`
+	HeaderPic  string    `json:"header_pic"`
+	PubKey     string    `json:"pub_key"`
+	PrivKey    string    `json:"priv_key"`
 }
 
 func LoadConfig() *Config {

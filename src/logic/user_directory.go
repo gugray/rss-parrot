@@ -6,6 +6,7 @@ import (
 	"rss_parrot/dto"
 	"rss_parrot/shared"
 	"strings"
+	"time"
 )
 
 const pageSize = 2
@@ -30,7 +31,7 @@ func NewUserDirectory(cfg *shared.Config, repo dal.IRepo) IUserDirectory {
 
 func (udir *userDirectory) GetWebfinger(user, host string) *dto.WebfingerResp {
 	cfgHost := udir.cfg.Host
-	cfgBirb := udir.cfg.BirbName
+	cfgBirb := udir.cfg.Birb.User
 
 	if !strings.EqualFold(host, cfgHost) || !strings.EqualFold(user, cfgBirb) {
 		return nil
@@ -61,8 +62,8 @@ func (udir *userDirectory) GetWebfinger(user, host string) *dto.WebfingerResp {
 
 func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 
-	cfgBirb := udir.cfg.BirbName
-	if !strings.EqualFold(user, cfgBirb) {
+	userInfo := udir.cfg.Birb
+	if !strings.EqualFold(user, userInfo.User) {
 		return nil
 	}
 
@@ -77,10 +78,10 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 		Id:                userUrl,
 		Type:              "Person",
 		PreferredUserName: user,
-		Name:              "Birby Mc Birb",
-		Summary:           "Psittaciform diversity in South America and Australasia suggests that the order may have evolved in Gondwana, centred in Australasia.",
+		Name:              userInfo.Name,
+		Summary:           userInfo.Summary,
 		ManuallyApproves:  false,
-		Published:         "2018-04-23T22:05:35Z",
+		Published:         userInfo.Published.Format(time.RFC3339),
 		Inbox:             udir.idb.UserInbox(user),
 		Outbox:            udir.idb.UserOutbox(user),
 		Followers:         udir.idb.UserFollowers(user),
@@ -89,7 +90,15 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 		PublicKey: dto.PublicKey{
 			Id:           udir.idb.UserKeyId(user),
 			Owner:        userUrl,
-			PublicKeyPem: udir.cfg.BirbPubkey,
+			PublicKeyPem: userInfo.PubKey,
+		},
+		Icon: dto.Image{
+			Type: "Image",
+			Url:  userInfo.ProfilePic,
+		},
+		Image: dto.Image{
+			Type: "Image",
+			Url:  userInfo.HeaderPic,
 		},
 	}
 	return &resp
@@ -97,7 +106,7 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 
 func (udir *userDirectory) GetOutboxSummary(user string) *dto.OrderedListSummary {
 
-	cfgBirb := udir.cfg.BirbName
+	cfgBirb := udir.cfg.Birb.User
 	if !strings.EqualFold(user, cfgBirb) {
 		return nil
 	}
@@ -115,7 +124,7 @@ func (udir *userDirectory) GetOutboxSummary(user string) *dto.OrderedListSummary
 
 func (udir *userDirectory) GetFollowersSummary(user string) *dto.OrderedListSummary {
 
-	cfgBirb := udir.cfg.BirbName
+	cfgBirb := udir.cfg.Birb.User
 	if !strings.EqualFold(user, cfgBirb) {
 		return nil
 	}
@@ -133,7 +142,7 @@ func (udir *userDirectory) GetFollowersSummary(user string) *dto.OrderedListSumm
 
 func (udir *userDirectory) GetFollowingSummary(user string) *dto.OrderedListSummary {
 
-	cfgBirb := udir.cfg.BirbName
+	cfgBirb := udir.cfg.Birb.User
 	if !strings.EqualFold(user, cfgBirb) {
 		return nil
 	}

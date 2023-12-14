@@ -53,7 +53,7 @@ func (sender *activitySender) Send(sendingUser, inboxUrl string, activity *dto.A
 	if err != nil {
 		return err
 	}
-	privkeyStr := sender.cfg.BirbPrivkey
+	privkeyStr := sender.cfg.Birb.PrivKey
 	block, _ := pem.Decode([]byte(privkeyStr))
 	privkey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {

@@ -44,7 +44,7 @@ func (ib *inbox) HandleFollow(
 	reqProblem = ""
 	err = nil
 
-	if receivingUser != ib.cfg.BirbName {
+	if receivingUser != ib.cfg.Birb.User {
 		reqProblem = fmt.Sprintf("User does not exist: %s", receivingUser)
 		return
 	}
@@ -118,7 +118,7 @@ func (ib *inbox) HandleUndo(
 	reqProblem = ""
 	err = nil
 
-	if receivingUser != ib.cfg.BirbName {
+	if receivingUser != ib.cfg.Birb.User {
 		reqProblem = fmt.Sprintf("User does not exist: %s", receivingUser)
 		return
 	}

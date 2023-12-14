@@ -1,0 +1,80 @@
+2023-12-14 17:06:58.109 <src/main.go:105> Application starting up
+2023-12-14 17:06:58.109 <server/server.go:22> Starting HTTP server at :1313
+
+2023-12-14 17:07:02.577 <server/server.go:27> Shutting down HTTP server
+2023-12-14 17:07:02.578 <src/main.go:109> Application shutting down
+2023-12-14 18:23:45.763 <src/main.go:105> Application starting up
+2023-12-14 18:23:45.764 <server/server.go:22> Starting HTTP server at :1313
+
+2023-12-14 18:23:46.970 <server/server.go:27> Shutting down HTTP server
+2023-12-14 18:23:46.971 <src/main.go:109> Application shutting down
+2023-12-14 18:54:04.871 <src/main.go:105> Application starting up
+2023-12-14 18:54:04.872 <server/server.go:22> Starting HTTP server at :1313
+2023-12-14 18:54:24.253 INFO <server/apub_handlers.go:139> Handling user inbox POST: /users/birb06/inbox
+2023-12-14 18:54:24.467 INFO <logic/inbox.go:42> Handling Follow activity to birb06
+2023-12-14 18:54:24.467 INFO <server/apub_handlers.go:198> Invalid 'Follow' request: User does not exist: birb06
+2023-12-14 18:55:44.434 <server/server.go:27> Shutting down HTTP server
+2023-12-14 18:55:44.435 <src/main.go:109> Application shutting down
+2023-12-14 19:02:28.343 <src/main.go:105> Application starting up
+2023-12-14 19:02:28.344 <server/server.go:22> Starting HTTP server at :1313
+2023-12-14 19:02:40.104 INFO <server/apub_handlers.go:83> Handling user GET: /users/birb
+2023-12-14 19:03:54.041 <server/server.go:27> Shutting down HTTP server
+2023-12-14 19:03:54.042 <src/main.go:109> Application shutting down
+2023-12-14 19:06:25.714 <src/main.go:105> Application starting up
+2023-12-14 19:06:25.714 <server/server.go:22> Starting HTTP server at :1313
+2023-12-14 19:08:52.906 INFO <server/apub_handlers.go:139> Handling user inbox POST: /users/birb06/inbox
+2023-12-14 19:08:53.073 INFO <logic/inbox.go:116> Handling Undo activity to birb06
+2023-12-14 19:08:53.073 INFO <server/apub_handlers.go:198> Invalid 'Undo' request: User does not exist: birb06
+2023-12-14 19:09:46.457 <server/server.go:27> Shutting down HTTP server
+2023-12-14 19:09:46.458 <src/main.go:109> Application shutting down
+2023-12-14 19:09:48.720 <src/main.go:105> Application starting up
+2023-12-14 19:09:48.720 <server/server.go:23> Starting HTTP server at :1313
+2023-12-14 19:10:33.786 <server/server.go:28> Shutting down HTTP server
+2023-12-14 19:10:33.786 <src/main.go:109> Application shutting down
+2023-12-14 19:11:35.234 <src/main.go:105> Application starting up
+2023-12-14 19:11:35.235 <server/server.go:22> Starting HTTP server at :1313
+2023-12-14 19:11:39.138 INFO <server/server.go:53> 404 GET request: /userfdss/birb
+2023-12-14 19:11:54.280 INFO <server/server.go:53> 404 GET request: /
+2023-12-14 19:11:54.434 INFO <server/server.go:53> 404 GET request: /favicon.ico
+2023-12-14 19:12:18.630 INFO <server/server.go:53> 404 GET request: /favicon.ico
+2023-12-14 19:12:39.082 <server/server.go:27> Shutting down HTTP server
+2023-12-14 19:12:39.083 <src/main.go:109> Application shutting down
+2023-12-14 19:12:43.671 <src/main.go:105> Application starting up
+2023-12-14 19:12:43.671 <server/server.go:22> Starting HTTP server at :1313
+2023-12-14 19:12:47.046 INFO <server/server.go:53> 404 GET request: /favicon.ico
+2023-12-14 19:12:50.299 <server/server.go:27> Shutting down HTTP server
+2023-12-14 19:12:50.299 <src/main.go:109> Application shutting down
+2023-12-14 19:13:01.436 <src/main.go:105> Application starting up
+2023-12-14 19:13:01.436 <server/server.go:22> Starting HTTP server at :1313
+2023-12-14 19:13:07.433 <server/server.go:27> Shutting down HTTP server
+2023-12-14 19:13:07.433 <src/main.go:109> Application shutting down
+2023-12-14 19:14:34.691 <src/main.go:105> Application starting up
+2023-12-14 19:14:34.691 <server/server.go:22> Starting HTTP server at :1313
+2023-12-14 19:14:45.418 INFO <server/apub_handlers.go:59> Handling webfinger GET: /.well-known/webfinger
+2023-12-14 19:14:45.536 INFO <server/apub_handlers.go:83> Handling user GET: /users/birb
+2023-12-14 19:14:45.648 INFO <server/apub_handlers.go:59> Handling webfinger GET: /.well-known/webfinger
+2023-12-14 19:14:46.408 INFO <server/apub_handlers.go:99> Handling user outbox GET: /users/birb/outbox
+2023-12-14 19:14:46.546 INFO <server/apub_handlers.go:125> Handling user following GET: /users/birb/following
+2023-12-14 19:14:46.643 INFO <server/apub_handlers.go:112> Handling user followers GET: /users/birb/followers
+2023-12-14 19:15:02.271 <server/server.go:27> Shutting down HTTP server
+2023-12-14 19:15:02.271 <src/main.go:109> Application shutting down
+2023-12-14 19:15:34.782 <src/main.go:105> Application starting up
+2023-12-14 19:15:34.782 <server/server.go:22> Starting HTTP server at :1313
+2023-12-14 19:16:19.806 INFO <server/apub_handlers.go:83> Handling user GET: /users/birb
+2023-12-14 19:17:37.671 INFO <server/apub_handlers.go:59> Handling webfinger GET: /.well-known/webfinger
+2023-12-14 19:17:37.794 INFO <server/apub_handlers.go:83> Handling user GET: /users/birb
+2023-12-14 19:17:37.882 INFO <server/apub_handlers.go:59> Handling webfinger GET: /.well-known/webfinger
+2023-12-14 19:17:38.435 INFO <server/apub_handlers.go:99> Handling user outbox GET: /users/birb/outbox
+2023-12-14 19:17:38.511 INFO <server/apub_handlers.go:125> Handling user following GET: /users/birb/following
+2023-12-14 19:17:38.594 INFO <server/apub_handlers.go:112> Handling user followers GET: /users/birb/followers
+2023-12-14 19:18:26.628 INFO <server/apub_handlers.go:139> Handling user inbox POST: /users/birb/inbox
+2023-12-14 19:18:26.960 INFO <logic/inbox.go:42> Handling Follow activity to birb
+2023-12-14 19:18:26.960 INFO <logic/inbox.go:96> Sending 'Accept' to https://genart.social/users/twilliability/inbox
+2023-12-14 19:18:27.162 INFO <server/apub_handlers.go:83> Handling user GET: /users/birb
+2023-12-14 19:18:27.270 INFO <server/apub_handlers.go:59> Handling webfinger GET: /.well-known/webfinger
+2023-12-14 19:18:27.353 INFO <server/apub_handlers.go:99> Handling user outbox GET: /users/birb/outbox
+2023-12-14 19:18:27.436 INFO <server/apub_handlers.go:125> Handling user following GET: /users/birb/following
+2023-12-14 19:18:27.507 INFO <server/apub_handlers.go:112> Handling user followers GET: /users/birb/followers
+2023-12-14 19:19:44.881 INFO <server/cmd_handlers.go:42> Toot: Request received
+2023-12-14 19:19:44.882 INFO <logic/broadcaster.go:50> Sending to inbox: https://genart.social/inbox
+2023-12-14 19:20:38.491 <server/server.go:27> Shutting down HTTP server
