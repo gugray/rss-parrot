@@ -1,12 +1,22 @@
 package dal
 
 import (
+	"database/sql"
+	"embed"
+	"fmt"
+	"github.com/go-sql-driver/mysql"
 	"rss_parrot/shared"
 	"sync"
 	"time"
 )
 
+const schemaVer = 1
+
+//go:embed scripts/*
+var scripts embed.FS
+
 type IRepo interface {
+	InitUpdateDb()
 	GetNextId() uint64
 	GetPostCount() uint
 	GetPosts() []*Post
@@ -19,21 +29,91 @@ type IRepo interface {
 
 type Repo struct {
 	cfg       *shared.Config
+	logger    shared.ILogger
+	db        *sql.DB
 	posts     []*Post
 	followers []*Follower
 	muId      sync.Mutex
 	nextId    uint64
 }
 
-func NewRepo(cfg *shared.Config) IRepo {
+func NewRepo(cfg *shared.Config, logger shared.ILogger) IRepo {
+
+	// Connect to DB
+	sqlCfg := mysql.Config{
+		User:            cfg.Secrets.DbUser,
+		Passwd:          cfg.Secrets.DbPass,
+		Net:             cfg.Db.Net,
+		Addr:            cfg.Db.Addr,
+		DBName:          cfg.Db.DbName,
+		MultiStatements: true,
+	}
+	var err error
+	var db *sql.DB
+	if db, err = sql.Open("mysql", sqlCfg.FormatDSN()); err != nil {
+		logger.Errorf("Failed to connect to DB: %v", err)
+		panic(err)
+	}
+	if err = db.Ping(); err != nil {
+		logger.Errorf("Failed to ping DB: %v", err)
+		panic(err)
+	}
+
 	repo := Repo{
 		cfg:       cfg,
+		logger:    logger,
+		db:        db,
 		posts:     []*Post{},
 		followers: []*Follower{},
 		nextId:    uint64(time.Now().UnixMilli()),
 	}
 	repo.addInitialData()
 	return &repo
+}
+
+func (repo *Repo) InitUpdateDb() {
+	dbVer := 0
+	sysParamsExists := false
+	var err error
+	var rows *sql.Rows
+	if rows, err = repo.db.Query("SHOW TABLES LIKE 'sys_params'"); err != nil {
+		repo.logger.Errorf("Failed to check if 'sys_params' table exists: %v", err)
+		panic(err)
+	}
+	for rows.Next() {
+		sysParamsExists = true
+	}
+	_ = rows.Close()
+	if !sysParamsExists {
+		repo.logger.Printf("Database appears to be empty; current schema version is %d", schemaVer)
+	} else {
+		row := repo.db.QueryRow("SELECT val FROM sys_params WHERE name='schema_ver'")
+		if err = row.Scan(&dbVer); err != nil {
+			repo.logger.Errorf("Failed to query schema version: %v", err)
+			panic(err)
+		}
+		repo.logger.Printf("Database is at version %d; current schema version is %d", dbVer, schemaVer)
+	}
+	for i := dbVer; i < schemaVer; i += 1 {
+		nextVer := i + 1
+		fn := fmt.Sprintf("scripts/create-%02d.sql", nextVer)
+		repo.logger.Printf("Running %s", fn)
+		var sqlBytes []byte
+		if sqlBytes, err = scripts.ReadFile(fn); err != nil {
+			repo.logger.Errorf("Failed to read init script %s: %v", fn, err)
+			panic(err)
+		}
+		sqlStr := string(sqlBytes)
+		if _, err = repo.db.Exec(sqlStr); err != nil {
+			repo.logger.Errorf("Failed to execute init script %s: %v", fn, err)
+			panic(err)
+		}
+		_, err = repo.db.Exec("UPDATE sys_params SET val=? WHERE name='schema_ver'", nextVer)
+		if err != nil {
+			repo.logger.Errorf("Failed to update schema_ver to %d: %v", i, err)
+			panic(err)
+		}
+	}
 }
 
 func (repo *Repo) addInitialData() {

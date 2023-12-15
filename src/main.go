@@ -54,6 +54,7 @@ func main() {
 		),
 		fx.Invoke(
 			registerHooks,
+			func(repo dal.IRepo) { repo.InitUpdateDb() },
 			func(*http.Server) {},
 		),
 		fx.ErrorHook(&initErrorHandler{}),
