@@ -18,7 +18,7 @@ jobs:
     #   working-directory: ./src
     #   run: 'echo "${{github.ref_name}}" >version.txt'
 
-    - name: Build web app
+    - name: Build Go app
       run: ./build.sh
 
     - name: Build Docker image
