@@ -1,4 +1,4 @@
-CREATE TABLE `parrot-db`.sys_params
+CREATE TABLE sys_params
 (
     name TEXT CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL,
     val  TEXT CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NULL,
