@@ -1,0 +1,43 @@
+name: Build and deploy
+
+on:
+  push:
+    # branches: [ main ]
+    tags:
+     - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Check out repository
+      uses: actions/checkout@v2
+
+    # - name: Write version from REF to file
+    #   working-directory: ./src
+    #   run: 'echo "${{github.ref_name}}" >version.txt'
+
+    - name: Build web app
+      run: ./build.sh
+
+    - name: Build Docker image
+      run: docker build --platform=linux/amd64 -t rss-parrot .
+
+    - name: Push Docker image to Amazon ECR
+      id: ecr
+      uses: jwalton/gh-ecr-push@v1
+      with:
+        access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        region: eu-central-1
+        local-image: rss-parrot
+        image: rss-parrot
+
+    # - name: Invoke deployment hook
+    #   uses: distributhor/workflow-webhook@v1
+    #   env:
+    #     webhook_url: ${{ secrets.WEBHOOK_URL }}
+    #     webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
+    #     data: '{ "secret": "${{ secrets.WEBHOOK_SECRET }}"  }'
+        
