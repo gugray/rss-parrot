@@ -10,6 +10,7 @@ import (
 )
 
 const pageSize = 2
+const websiteLinkTemplate = "<a href='https://%s' target='_blank' rel='nofollow noopener noreferrer me' translate='no'><span class='invisible'>https://</span><span class=''>%s</span><span class='invisible'></span></a>"
 
 type IUserDirectory interface {
 	GetWebfinger(user, instance string) *dto.WebfingerResp
@@ -91,6 +92,13 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 			Id:           udir.idb.UserKeyId(user),
 			Owner:        userUrl,
 			PublicKeyPem: userInfo.PubKey,
+		},
+		Attachments: []dto.Attachment{
+			{
+				Type:  "PropertyValue",
+				Name:  "Website",
+				Value: fmt.Sprintf(websiteLinkTemplate, udir.cfg.Host, udir.cfg.Host),
+			},
 		},
 		Icon: dto.Image{
 			Type: "Image",

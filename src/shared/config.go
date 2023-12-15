@@ -9,11 +9,14 @@ import (
 )
 
 const (
-	configVarName = "CONFIG"                  // If set, will load config.json from this path and not from devConfigPath
-	devConfigPath = "../dev/config.dev.jsonc" // Path to config.json in development environment
+	configVarName  = "CONFIG"                   // If set, will load config.json from this path and not from devConfigPath
+	secretsVarName = "SECRETS"                  // If set, will load secrets.json from this path and not from devSecretsPath
+	devConfigPath  = "../dev/config.dev.jsonc"  // Path to config.json in development environment
+	devSecretsPath = "../dev/secrets.dev.jsonc" // Path to config.json in development environment
 )
 
 type Config struct {
+	Secrets     Secrets   `json:"-"`
 	LogFile     string    `json:"log_file"`
 	LogLevel    string    `json:"log_level"`
 	ServicePort uint      `json:"service_port"`
@@ -32,34 +35,48 @@ type UserInfo struct {
 	PrivKey    string    `json:"priv_key"`
 }
 
+type Secrets struct {
+	DbUser          string `json:"db_user"`
+	DbPass          string `json:"db_pass"`
+	BirdPrivKeyPass string `json:"birb_privkey_passphrase"`
+}
+
 func LoadConfig() *Config {
 
-	// Where's our config file?
+	// Where are our config and secrets files?
 	cfgPath := os.Getenv(configVarName)
 	if len(cfgPath) == 0 {
 		cfgPath = devConfigPath
 	}
+	secretsPath := os.Getenv(secretsVarName)
+	if len(secretsPath) == 0 {
+		secretsPath = devSecretsPath
+	}
 
-	// Read file
+	// Read config file
+	var config Config
+	mustDeserializeFile(cfgPath, &config)
+	// Read secrets member from secrets file
+	mustDeserializeFile(secretsPath, &config.Secrets)
+	return &config
+}
+
+func mustDeserializeFile[T any](fileName string, obj *T) {
 	var err error
 	var cfgJson []byte
-	cfgJson, err = os.ReadFile(cfgPath)
+	cfgJson, err = os.ReadFile(fileName)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// JSONC => JSON
 	cfgJson, err = standardizeJSON(cfgJson)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// Parse
-	var config Config
-	if err := json.Unmarshal(cfgJson, &config); err != nil {
+	if err := json.Unmarshal(cfgJson, obj); err != nil {
 		log.Fatal(err)
 	}
-	return &config
 }
 
 func standardizeJSON(b []byte) ([]byte, error) {

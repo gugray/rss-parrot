@@ -53,9 +53,16 @@ func (sender *activitySender) Send(sendingUser, inboxUrl string, activity *dto.A
 	if err != nil {
 		return err
 	}
-	privkeyStr := sender.cfg.Birb.PrivKey
-	block, _ := pem.Decode([]byte(privkeyStr))
-	privkey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	privKeyStr := sender.cfg.Birb.PrivKey
+	block, _ := pem.Decode([]byte(privKeyStr))
+	privKeyBytes := block.Bytes
+	if x509.IsEncryptedPEMBlock(block) {
+		privKeyBytes, err = x509.DecryptPEMBlock(block, []byte(sender.cfg.Secrets.BirdPrivKeyPass))
+		if err != nil {
+			return err
+		}
+	}
+	privkey, err := x509.ParsePKCS1PrivateKey(privKeyBytes)
 	if err != nil {
 		return err
 	}

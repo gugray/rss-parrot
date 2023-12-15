@@ -15,8 +15,15 @@ type UserInfo struct {
 	Following         string        `json:"following"`
 	Endpoints         UserEndpoints `json:"endpoints"`
 	PublicKey         PublicKey     `json:"publicKey"`
+	Attachments       []Attachment  `json:"attachment"`
 	Icon              Image         `json:"icon"`
 	Image             Image         `json:"image"`
+}
+
+type Attachment struct {
+	Type  string `json:"type"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type Image struct {
