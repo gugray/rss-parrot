@@ -27,8 +27,6 @@ type Config struct {
 
 type UserInfo struct {
 	User       string    `json:"user"`
-	Name       string    `json:"name"`
-	Summary    string    `json:"summary"`
 	Published  time.Time `json:"published"`
 	ProfilePic string    `json:"profile_pic"`
 	HeaderPic  string    `json:"header_pic"`

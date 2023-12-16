@@ -13,7 +13,6 @@ type Account struct {
 	SiteUrl         string // https://ludic.mataroa.blog/
 	RssUrl          string // https://ludic.mataroa.blog/rss/
 	PubKey          string
-	PrivKey         string
 	ProfileImageUrl string
 }
 

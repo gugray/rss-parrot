@@ -21,6 +21,7 @@ type inbox struct {
 	logger          shared.ILogger
 	idb             shared.IdBuilder
 	repo            dal.IRepo
+	keyHandler      IKeyHandler
 	sender          IActivitySender
 	reUserUrlParser *regexp.Regexp
 }
@@ -29,10 +30,11 @@ func NewInbox(
 	cfg *shared.Config,
 	logger shared.ILogger,
 	repo dal.IRepo,
+	keyHandler IKeyHandler,
 	sender IActivitySender,
 ) IInbox {
 	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/u/([^/]+)/?")
-	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, sender, reUserUrlParser}
+	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, keyHandler, sender, reUserUrlParser}
 }
 
 func (ib *inbox) HandleFollow(
@@ -98,9 +100,15 @@ func (ib *inbox) HandleFollow(
 
 func (ib *inbox) sendFollowAccept(followedUserName, inboxUrl string, actFollow *dto.ActivityIn[string]) {
 
-	time.Sleep(3000)
+	time.Sleep(1000)
 
 	ib.logger.Infof("Sending 'Accept' to %s", inboxUrl)
+
+	privKey, err := ib.keyHandler.GetPrivKey(followedUserName)
+	if err != nil {
+		ib.logger.Errorf("Failed to private key for user %s: %v", followedUserName, err)
+		return
+	}
 
 	actAccept := dto.ActivityOut{
 		Context: "https://www.w3.org/ns/activitystreams",
@@ -110,8 +118,8 @@ func (ib *inbox) sendFollowAccept(followedUserName, inboxUrl string, actFollow *
 		Object:  actFollow,
 	}
 
-	if err := ib.sender.Send(followedUserName, inboxUrl, &actAccept); err != nil {
-		ib.logger.Infof("Failed to send 'Accept' activity: %v", err)
+	if err = ib.sender.Send(privKey, followedUserName, inboxUrl, &actAccept); err != nil {
+		ib.logger.Warnf("Failed to send 'Accept' activity: %v", err)
 	}
 }
 

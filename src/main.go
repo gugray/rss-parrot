@@ -12,6 +12,7 @@ import (
 	"rss_parrot/logic"
 	"rss_parrot/server"
 	"rss_parrot/shared"
+	"rss_parrot/texts"
 )
 
 type initErrorHandler struct {
@@ -42,12 +43,14 @@ func main() {
 			provideLogger,
 			server.NewHTTPServer,
 			fx.Annotate(server.NewMux, fx.ParamTags(`group:"handler_group"`)),
+			logic.NewKeyHandler,
 			logic.NewUserDirectory,
 			logic.NewActivitySender,
 			logic.NewHttpSigChecker,
 			logic.NewUserRetriever,
 			logic.NewBroadcaster,
 			logic.NewInbox,
+			texts.NewTexts,
 			dal.NewRepo,
 			asHandlerGroupDef(server.NewApubHandlerGroup),
 			asHandlerGroupDef(server.NewCmdHandlerGroup),

@@ -21,6 +21,8 @@ type IRepo interface {
 	GetNextId() uint64
 	AddAccount(account *Account) error
 	DoesAccountExist(user string) (bool, error)
+	GetPrivKey(user string) (string, error)
+	SetPrivKey(user, privKey string) error
 	GetAccount(user string) (*Account, error)
 	GetPostCount(user string) (uint, error)
 	GetPosts(user string) ([]*Post, error)
@@ -72,6 +74,14 @@ func NewRepo(cfg *shared.Config, logger shared.ILogger) IRepo {
 	}
 
 	return &repo
+}
+
+func (repo *Repo) GetNextId() uint64 {
+	repo.muId.Lock()
+	res := repo.nextId + 1
+	repo.nextId = res
+	repo.muId.Unlock()
+	return res
 }
 
 func (repo *Repo) InitUpdateDb() {
@@ -127,15 +137,9 @@ func (repo *Repo) InitUpdateDb() {
 func (repo *Repo) mustAddBuiltInUsers() {
 	idb := shared.IdBuilder{Host: repo.cfg.Host}
 	err := repo.AddAccount(&Account{
-		CreatedAt:       repo.cfg.Birb.Published,
-		UserUrl:         idb.UserUrl(repo.cfg.Birb.User),
-		Handle:          repo.cfg.Birb.User,
-		Name:            repo.cfg.Birb.Name,
-		Summary:         repo.cfg.Birb.Summary,
-		ProfileImageUrl: repo.cfg.Birb.ProfilePic,
-		RssUrl:          "",
-		PubKey:          repo.cfg.Birb.PubKey,
-		PrivKey:         repo.cfg.Birb.PrivKey,
+		CreatedAt: repo.cfg.Birb.Published,
+		UserUrl:   idb.UserUrl(repo.cfg.Birb.User),
+		Handle:    repo.cfg.Birb.User,
 	})
 	if err != nil {
 		repo.logger.Errorf("Failed to add built-in users: %v", err)
@@ -145,10 +149,10 @@ func (repo *Repo) mustAddBuiltInUsers() {
 
 func (repo *Repo) AddAccount(acct *Account) error {
 	_, err := repo.db.Exec(`INSERT INTO accounts
-    	(created_at, user_url, handle, name, summary, profile_image_url, site_url, rss_url, pubkey, privkey)
+    	(created_at, user_url, handle, name, summary, profile_image_url, site_url, rss_url, pubkey)
 		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		acct.CreatedAt, acct.UserUrl, acct.Handle, acct.Name, acct.Summary, acct.ProfileImageUrl,
-		acct.SiteUrl, acct.RssUrl, acct.PubKey, acct.PrivKey)
+		acct.SiteUrl, acct.RssUrl, acct.PubKey)
 	if err != nil {
 		return err
 	}
@@ -167,12 +171,12 @@ func (repo *Repo) DoesAccountExist(user string) (bool, error) {
 
 func (repo *Repo) GetAccount(user string) (*Account, error) {
 	row := repo.db.QueryRow(
-		`SELECT created_at, user_url, handle, name, summary, profile_image_url, rss_url, pubkey, privkey
+		`SELECT created_at, user_url, handle, name, summary, profile_image_url, rss_url, pubkey
 		FROM accounts WHERE handle=?`, user)
 	var err error
 	var res Account
 	err = row.Scan(&res.CreatedAt, &res.UserUrl, &res.Handle, &res.Name, &res.Summary, &res.ProfileImageUrl,
-		&res.RssUrl, &res.PubKey, &res.PrivKey)
+		&res.RssUrl, &res.PubKey)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -183,12 +187,27 @@ func (repo *Repo) GetAccount(user string) (*Account, error) {
 	return &res, nil
 }
 
-func (repo *Repo) GetNextId() uint64 {
-	repo.muId.Lock()
-	res := repo.nextId + 1
-	repo.nextId = res
-	repo.muId.Unlock()
-	return res
+func (repo *Repo) GetPrivKey(user string) (string, error) {
+	row := repo.db.QueryRow(`SELECT privkey FROM accounts WHERE handle=?`, user)
+	var err error
+	var res string
+	err = row.Scan(&res)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		} else {
+			return "", err
+		}
+	}
+	return res, nil
+}
+
+func (repo *Repo) SetPrivKey(user, privKey string) error {
+	_, err := repo.db.Exec("UPDATE accounts SET privkey=? WHERE handle=?", privKey, user)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (repo *Repo) GetPostCount(user string) (uint, error) {

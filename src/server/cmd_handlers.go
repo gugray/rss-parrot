@@ -11,6 +11,7 @@ import (
 type cmdbHandlerGroup struct {
 	cfg         *shared.Config
 	logger      shared.ILogger
+	keyHandler  logic.IKeyHandler
 	sender      logic.IActivitySender
 	broadcaster logic.IBroadcaster
 }
@@ -18,12 +19,14 @@ type cmdbHandlerGroup struct {
 func NewCmdHandlerGroup(
 	cfg *shared.Config,
 	logger shared.ILogger,
+	keyHandler logic.IKeyHandler,
 	sender logic.IActivitySender,
 	broadcaster logic.IBroadcaster,
 ) IHandlerGroup {
 	res := cmdbHandlerGroup{
 		cfg:         cfg,
 		logger:      logger,
+		keyHandler:  keyHandler,
 		sender:      sender,
 		broadcaster: broadcaster,
 	}
@@ -57,11 +60,20 @@ func (cmd *cmdbHandlerGroup) getFollow(w http.ResponseWriter, r *http.Request) {
 		Object:  "https://toot.community/users/gaborparrot",
 	}
 
-	err := cmd.sender.Send(cmd.cfg.Birb.User, "https://toot.community/inbox", &activity)
+	privkey, err := cmd.keyHandler.GetPrivKey(cmd.cfg.Birb.User)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintln(w, "Failed to retrieve key")
+		fmt.Fprintln(w, err)
+		return
+	}
+
+	err = cmd.sender.Send(privkey, cmd.cfg.Birb.User, "https://toot.community/inbox", &activity)
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintln(w, "Failed to post activity")
 		fmt.Fprintln(w, err)
+		return
 	}
 
 	fmt.Fprintln(w, "ActivityOut posted")

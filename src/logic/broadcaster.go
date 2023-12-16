@@ -11,20 +11,29 @@ type IBroadcaster interface {
 }
 
 type broadcaster struct {
-	cfg    *shared.Config
-	logger shared.ILogger
-	repo   dal.IRepo
-	sender IActivitySender
-	idb    shared.IdBuilder
+	cfg        *shared.Config
+	logger     shared.ILogger
+	repo       dal.IRepo
+	keyHandler IKeyHandler
+	sender     IActivitySender
+	idb        shared.IdBuilder
 }
 
 func NewBroadcaster(
 	cfg *shared.Config,
 	logger shared.ILogger,
 	repo dal.IRepo,
+	keyHandler IKeyHandler,
 	sender IActivitySender,
 ) IBroadcaster {
-	return &broadcaster{cfg, logger, repo, sender, shared.IdBuilder{cfg.Host}}
+	return &broadcaster{
+		cfg:        cfg,
+		logger:     logger,
+		repo:       repo,
+		keyHandler: keyHandler,
+		sender:     sender,
+		idb:        shared.IdBuilder{cfg.Host},
+	}
 }
 
 func (b *broadcaster) Broadcast(user, published, message string) error {
@@ -43,15 +52,23 @@ func (b *broadcaster) Broadcast(user, published, message string) error {
 	}
 
 	for addr := range inboxes {
-		b.sendToInbox(addr, user, published, message)
+		err = b.sendToInbox(addr, user, published, message)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (b *broadcaster) sendToInbox(addr, user, published, message string) {
+func (b *broadcaster) sendToInbox(addr, user, published, message string) error {
 
 	b.logger.Infof("Sending to inbox: %s", addr)
+
+	privKey, err := b.keyHandler.GetPrivKey(user)
+	if err != nil {
+		return err
+	}
 
 	id := b.repo.GetNextId()
 	note := &dto.Note{
@@ -73,5 +90,7 @@ func (b *broadcaster) sendToInbox(addr, user, published, message string) {
 		Object:  note,
 	}
 
-	b.sender.Send(user, addr, act)
+	b.sender.Send(privKey, user, addr, act)
+
+	return nil
 }

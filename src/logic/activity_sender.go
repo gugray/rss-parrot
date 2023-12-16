@@ -2,9 +2,8 @@ package logic
 
 import (
 	"bytes"
-	"crypto/x509"
+	"crypto/rsa"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/go-fed/httpsig"
@@ -17,7 +16,7 @@ import (
 )
 
 type IActivitySender interface {
-	Send(sendingUser, inboxUrl string, activity *dto.ActivityOut) error
+	Send(privKey *rsa.PrivateKey, sendingUser, inboxUrl string, activity *dto.ActivityOut) error
 }
 
 type activitySender struct {
@@ -30,7 +29,12 @@ func NewActivitySender(cfg *shared.Config, logger shared.ILogger) IActivitySende
 	return &activitySender{cfg, logger, shared.IdBuilder{cfg.Host}}
 }
 
-func (sender *activitySender) Send(sendingUser, inboxUrl string, activity *dto.ActivityOut) error {
+func (sender *activitySender) Send(
+	privKey *rsa.PrivateKey,
+	sendingUser,
+	inboxUrl string,
+	activity *dto.ActivityOut,
+) error {
 
 	host := strings.Replace(inboxUrl, "https://", "", -1)
 	slashIx := strings.IndexByte(host, '/')
@@ -53,21 +57,9 @@ func (sender *activitySender) Send(sendingUser, inboxUrl string, activity *dto.A
 	if err != nil {
 		return err
 	}
-	privKeyStr := sender.cfg.Birb.PrivKey
-	block, _ := pem.Decode([]byte(privKeyStr))
-	privKeyBytes := block.Bytes
-	if x509.IsEncryptedPEMBlock(block) {
-		privKeyBytes, err = x509.DecryptPEMBlock(block, []byte(sender.cfg.Secrets.BirdPrivKeyPass))
-		if err != nil {
-			return err
-		}
-	}
-	privkey, err := x509.ParsePKCS1PrivateKey(privKeyBytes)
-	if err != nil {
-		return err
-	}
+
 	keyId := sender.idb.UserKeyId(sendingUser)
-	err = signer.SignRequest(privkey, keyId, req, bodyJson)
+	err = signer.SignRequest(privKey, keyId, req, bodyJson)
 	if err != nil {
 		return err
 	}

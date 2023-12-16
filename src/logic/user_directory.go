@@ -5,6 +5,7 @@ import (
 	"rss_parrot/dal"
 	"rss_parrot/dto"
 	"rss_parrot/shared"
+	"rss_parrot/texts"
 	"strings"
 	"time"
 )
@@ -26,10 +27,11 @@ type userDirectory struct {
 	cfg  *shared.Config
 	repo dal.IRepo
 	idb  shared.IdBuilder
+	txt  texts.ITexts
 }
 
-func NewUserDirectory(cfg *shared.Config, repo dal.IRepo) IUserDirectory {
-	return &userDirectory{cfg, repo, shared.IdBuilder{cfg.Host}}
+func NewUserDirectory(cfg *shared.Config, repo dal.IRepo, txt texts.ITexts) IUserDirectory {
+	return &userDirectory{cfg, repo, shared.IdBuilder{cfg.Host}, txt}
 }
 
 func (udir *userDirectory) GetWebfinger(user string) *dto.WebfingerResp {
@@ -63,15 +65,24 @@ func (udir *userDirectory) GetWebfinger(user string) *dto.WebfingerResp {
 	return &resp
 }
 
+func (udir *userDirectory) patchSpecialAccount(acct *dal.Account) {
+	if acct.Handle == udir.cfg.Birb.User {
+		acct.Name = udir.txt.Get("birb_name.txt")
+		acct.Summary = udir.txt.Get("birb_bio.html")
+		acct.PubKey = udir.cfg.Birb.PubKey
+		acct.ProfileImageUrl = udir.cfg.Birb.ProfilePic
+	}
+}
+
 func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 
+	user = strings.ToLower(user)
+	userUrl := udir.idb.UserUrl(user)
 	acct, err := udir.repo.GetAccount(user)
 	if err != nil || acct == nil {
 		return nil // TODO errors
 	}
-
-	user = strings.ToLower(user)
-	userUrl := udir.idb.UserUrl(user)
+	udir.patchSpecialAccount(acct)
 
 	resp := dto.UserInfo{
 		Context: []string{
@@ -117,13 +128,14 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 func (udir *userDirectory) GetOutboxSummary(user string) *dto.OrderedListSummary {
 
 	var err error
-	var acct *dal.Account
-	var postCount uint
+	var exists bool
 	user = strings.ToLower(user)
-	acct, err = udir.repo.GetAccount(user)
-	if err != nil || acct == nil {
+	exists, err = udir.repo.DoesAccountExist(user)
+	if err != nil || !exists {
 		return nil // TODO errors
 	}
+
+	var postCount uint
 	postCount, err = udir.repo.GetPostCount(user) // TODO errors
 
 	resp := dto.OrderedListSummary{
@@ -138,13 +150,14 @@ func (udir *userDirectory) GetOutboxSummary(user string) *dto.OrderedListSummary
 func (udir *userDirectory) GetFollowersSummary(user string) *dto.OrderedListSummary {
 
 	var err error
-	var acct *dal.Account
-	var followerCount uint
+	var exists bool
 	user = strings.ToLower(user)
-	acct, err = udir.repo.GetAccount(user)
-	if err != nil || acct == nil {
+	exists, err = udir.repo.DoesAccountExist(user)
+	if err != nil || !exists {
 		return nil // TODO errors
 	}
+
+	var followerCount uint
 	followerCount, err = udir.repo.GetFollowerCount(user) // TODO errors
 
 	resp := dto.OrderedListSummary{
@@ -159,10 +172,10 @@ func (udir *userDirectory) GetFollowersSummary(user string) *dto.OrderedListSumm
 func (udir *userDirectory) GetFollowingSummary(user string) *dto.OrderedListSummary {
 
 	var err error
-	var acct *dal.Account
+	var exists bool
 	user = strings.ToLower(user)
-	acct, err = udir.repo.GetAccount(user)
-	if err != nil || acct == nil {
+	exists, err = udir.repo.DoesAccountExist(user)
+	if err != nil || !exists {
 		return nil // TODO errors
 	}
 
