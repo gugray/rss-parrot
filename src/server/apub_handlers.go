@@ -45,11 +45,11 @@ func NewApubHandlerGroup(
 func (hg *apubHandlerGroup) GroupDefs() []handlerDef {
 	return []handlerDef{
 		{"GET", "/.well-known/webfinger", func(w http.ResponseWriter, r *http.Request) { hg.getWebfinger(w, r) }},
-		{"GET", "/users/{user}", func(w http.ResponseWriter, r *http.Request) { hg.getUser(w, r) }},
-		{"GET", "/users/{user}/outbox", func(w http.ResponseWriter, r *http.Request) { hg.getUserOutbox(w, r) }},
-		{"GET", "/users/{user}/followers", func(w http.ResponseWriter, r *http.Request) { hg.getUserFollowers(w, r) }},
-		{"GET", "/users/{user}/following", func(w http.ResponseWriter, r *http.Request) { hg.getUserFollowing(w, r) }},
-		{"POST", "/users/{user}/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postUserInbox(w, r) }},
+		{"GET", "/u/{user}", func(w http.ResponseWriter, r *http.Request) { hg.getUser(w, r) }},
+		{"GET", "/u/{user}/outbox", func(w http.ResponseWriter, r *http.Request) { hg.getUserOutbox(w, r) }},
+		{"GET", "/u/{user}/followers", func(w http.ResponseWriter, r *http.Request) { hg.getUserFollowers(w, r) }},
+		{"GET", "/u/{user}/following", func(w http.ResponseWriter, r *http.Request) { hg.getUserFollowing(w, r) }},
+		{"POST", "/u/{user}/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postUserInbox(w, r) }},
 		{"POST", "/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postUserInbox(w, r) }},
 	}
 }
@@ -66,8 +66,9 @@ func (hg *apubHandlerGroup) getWebfinger(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	user, host := groups[1], groups[2]
+	_ = host // TODO check is host for us?
 
-	resp := hg.udir.GetWebfinger(user, host)
+	resp := hg.udir.GetWebfinger(user)
 
 	if resp == nil {
 		hg.logger.Infof("Webfinger: No such resource; 'resource' param is '%s'", resourceParam)

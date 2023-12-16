@@ -15,7 +15,7 @@ type broadcaster struct {
 	logger shared.ILogger
 	repo   dal.IRepo
 	sender IActivitySender
-	idb    idBuilder
+	idb    shared.IdBuilder
 }
 
 func NewBroadcaster(
@@ -24,14 +24,18 @@ func NewBroadcaster(
 	repo dal.IRepo,
 	sender IActivitySender,
 ) IBroadcaster {
-	return &broadcaster{cfg, logger, repo, sender, idBuilder{cfg.Host}}
+	return &broadcaster{cfg, logger, repo, sender, shared.IdBuilder{cfg.Host}}
 }
 
 func (b *broadcaster) Broadcast(user, published, message string) error {
 
+	followers, err := b.repo.GetFollowers(user)
+	if err != nil {
+		return err
+	}
+
 	// Collect distinct shared inboxes
 	inboxes := make(map[string]struct{})
-	followers := b.repo.GetFollowers()
 	for _, f := range followers {
 		if _, exists := inboxes[f.SharedInbox]; !exists {
 			inboxes[f.SharedInbox] = struct{}{}

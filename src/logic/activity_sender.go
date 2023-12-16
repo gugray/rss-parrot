@@ -23,11 +23,11 @@ type IActivitySender interface {
 type activitySender struct {
 	cfg    *shared.Config
 	logger shared.ILogger
-	idb    idBuilder
+	idb    shared.IdBuilder
 }
 
 func NewActivitySender(cfg *shared.Config, logger shared.ILogger) IActivitySender {
-	return &activitySender{cfg, logger, idBuilder{cfg.Host}}
+	return &activitySender{cfg, logger, shared.IdBuilder{cfg.Host}}
 }
 
 func (sender *activitySender) Send(sendingUser, inboxUrl string, activity *dto.ActivityOut) error {
@@ -47,7 +47,7 @@ func (sender *activitySender) Send(sendingUser, inboxUrl string, activity *dto.A
 	signer, _, err := httpsig.NewSigner(
 		[]httpsig.Algorithm{httpsig.RSA_SHA256},
 		httpsig.DigestSha256,
-		[]string{httpsig.RequestTarget, "host", "date", "digest"},
+		[]string{httpsig.RequestTarget, "Host", "date", "digest"},
 		httpsig.Signature,
 		0)
 	if err != nil {

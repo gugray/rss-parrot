@@ -53,7 +53,7 @@ func (cmd *cmdbHandlerGroup) getFollow(w http.ResponseWriter, r *http.Request) {
 		Context: "https://www.w3.org/ns/activitystreams",
 		Id:      "https://rss-parrot.zydeo.net/follow-44",
 		Type:    "Follow",
-		Actor:   "https://rss-parrot.zydeo.net/users/birb03",
+		Actor:   "https://rss-parrot.zydeo.net/u/birb03",
 		Object:  "https://toot.community/users/gaborparrot",
 	}
 

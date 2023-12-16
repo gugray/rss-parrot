@@ -12,8 +12,10 @@ import (
 const pageSize = 2
 const websiteLinkTemplate = "<a href='https://%s' target='_blank' rel='nofollow noopener noreferrer me' translate='no'><span class='invisible'>https://</span><span class=''>%s</span><span class='invisible'></span></a>"
 
+// TODO: return error in all of these
+
 type IUserDirectory interface {
-	GetWebfinger(user, instance string) *dto.WebfingerResp
+	GetWebfinger(user string) *dto.WebfingerResp
 	GetUserInfo(user string) *dto.UserInfo
 	GetOutboxSummary(user string) *dto.OrderedListSummary
 	GetFollowersSummary(user string) *dto.OrderedListSummary
@@ -23,19 +25,19 @@ type IUserDirectory interface {
 type userDirectory struct {
 	cfg  *shared.Config
 	repo dal.IRepo
-	idb  idBuilder
+	idb  shared.IdBuilder
 }
 
 func NewUserDirectory(cfg *shared.Config, repo dal.IRepo) IUserDirectory {
-	return &userDirectory{cfg, repo, idBuilder{cfg.Host}}
+	return &userDirectory{cfg, repo, shared.IdBuilder{cfg.Host}}
 }
 
-func (udir *userDirectory) GetWebfinger(user, host string) *dto.WebfingerResp {
-	cfgHost := udir.cfg.Host
-	cfgBirb := udir.cfg.Birb.User
+func (udir *userDirectory) GetWebfinger(user string) *dto.WebfingerResp {
 
-	if !strings.EqualFold(host, cfgHost) || !strings.EqualFold(user, cfgBirb) {
-		return nil
+	cfgHost := udir.cfg.Host
+	acct, err := udir.repo.GetAccount(user)
+	if err != nil || acct == nil {
+		return nil // TODO errors
 	}
 
 	user = strings.ToLower(user)
@@ -63,9 +65,9 @@ func (udir *userDirectory) GetWebfinger(user, host string) *dto.WebfingerResp {
 
 func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 
-	userInfo := udir.cfg.Birb
-	if !strings.EqualFold(user, userInfo.User) {
-		return nil
+	acct, err := udir.repo.GetAccount(user)
+	if err != nil || acct == nil {
+		return nil // TODO errors
 	}
 
 	user = strings.ToLower(user)
@@ -79,10 +81,10 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 		Id:                userUrl,
 		Type:              "Person",
 		PreferredUserName: user,
-		Name:              userInfo.Name,
-		Summary:           userInfo.Summary,
+		Name:              acct.Name,
+		Summary:           acct.Summary,
 		ManuallyApproves:  false,
-		Published:         userInfo.Published.Format(time.RFC3339),
+		Published:         acct.CreatedAt.Format(time.RFC3339),
 		Inbox:             udir.idb.UserInbox(user),
 		Outbox:            udir.idb.UserOutbox(user),
 		Followers:         udir.idb.UserFollowers(user),
@@ -91,7 +93,7 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 		PublicKey: dto.PublicKey{
 			Id:           udir.idb.UserKeyId(user),
 			Owner:        userUrl,
-			PublicKeyPem: userInfo.PubKey,
+			PublicKeyPem: acct.PubKey,
 		},
 		Attachments: []dto.Attachment{
 			{
@@ -102,66 +104,73 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 		},
 		Icon: dto.Image{
 			Type: "Image",
-			Url:  userInfo.ProfilePic,
+			Url:  acct.ProfileImageUrl,
 		},
-		Image: dto.Image{
-			Type: "Image",
-			Url:  userInfo.HeaderPic,
-		},
+		//Image: dto.Image{
+		//	Type: "Image",
+		//	Url:  userInfo.HeaderPic,
+		//},
 	}
 	return &resp
 }
 
 func (udir *userDirectory) GetOutboxSummary(user string) *dto.OrderedListSummary {
 
-	cfgBirb := udir.cfg.Birb.User
-	if !strings.EqualFold(user, cfgBirb) {
-		return nil
-	}
-
+	var err error
+	var acct *dal.Account
+	var postCount uint
 	user = strings.ToLower(user)
+	acct, err = udir.repo.GetAccount(user)
+	if err != nil || acct == nil {
+		return nil // TODO errors
+	}
+	postCount, err = udir.repo.GetPostCount(user) // TODO errors
 
 	resp := dto.OrderedListSummary{
 		Context:    "https://www.w3.org/ns/activitystreams",
 		Id:         udir.idb.UserUrl(user),
 		Type:       "OrderedCollection",
-		TotalItems: udir.repo.GetPostCount(),
+		TotalItems: postCount,
 	}
 	return &resp
 }
 
 func (udir *userDirectory) GetFollowersSummary(user string) *dto.OrderedListSummary {
 
-	cfgBirb := udir.cfg.Birb.User
-	if !strings.EqualFold(user, cfgBirb) {
-		return nil
-	}
-
+	var err error
+	var acct *dal.Account
+	var followerCount uint
 	user = strings.ToLower(user)
+	acct, err = udir.repo.GetAccount(user)
+	if err != nil || acct == nil {
+		return nil // TODO errors
+	}
+	followerCount, err = udir.repo.GetFollowerCount(user) // TODO errors
 
 	resp := dto.OrderedListSummary{
 		Context:    "https://www.w3.org/ns/activitystreams",
 		Id:         udir.idb.UserFollowers(user),
 		Type:       "OrderedCollection",
-		TotalItems: udir.repo.GetPostCount(),
+		TotalItems: followerCount,
 	}
 	return &resp
 }
 
 func (udir *userDirectory) GetFollowingSummary(user string) *dto.OrderedListSummary {
 
-	cfgBirb := udir.cfg.Birb.User
-	if !strings.EqualFold(user, cfgBirb) {
-		return nil
-	}
-
+	var err error
+	var acct *dal.Account
 	user = strings.ToLower(user)
+	acct, err = udir.repo.GetAccount(user)
+	if err != nil || acct == nil {
+		return nil // TODO errors
+	}
 
 	resp := dto.OrderedListSummary{
 		Context:    "https://www.w3.org/ns/activitystreams",
 		Id:         udir.idb.UserFollowers(user),
 		Type:       "OrderedCollection",
-		TotalItems: udir.repo.GetPostCount(),
+		TotalItems: 0,
 	}
 	return &resp
 }

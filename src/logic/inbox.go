@@ -19,6 +19,7 @@ type IInbox interface {
 type inbox struct {
 	cfg             *shared.Config
 	logger          shared.ILogger
+	idb             shared.IdBuilder
 	repo            dal.IRepo
 	sender          IActivitySender
 	reUserUrlParser *regexp.Regexp
@@ -30,8 +31,8 @@ func NewInbox(
 	repo dal.IRepo,
 	sender IActivitySender,
 ) IInbox {
-	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/users/([^/]+)/?")
-	return &inbox{cfg, logger, repo, sender, reUserUrlParser}
+	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/u/([^/]+)/?")
+	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, sender, reUserUrlParser}
 }
 
 func (ib *inbox) HandleFollow(
@@ -43,8 +44,12 @@ func (ib *inbox) HandleFollow(
 
 	reqProblem = ""
 	err = nil
-
-	if receivingUser != ib.cfg.Birb.User {
+	var userExists bool
+	userExists, err = ib.repo.DoesAccountExist(receivingUser)
+	if err != nil {
+		return "", err
+	}
+	if !userExists {
 		reqProblem = fmt.Sprintf("User does not exist: %s", receivingUser)
 		return
 	}
@@ -57,9 +62,8 @@ func (ib *inbox) HandleFollow(
 	}
 
 	// Is object the ID if this account?
-	cfgInstance := ib.cfg.Host
-	myUserId := fmt.Sprintf("https://%s/users/%s", cfgInstance, receivingUser)
-	if myUserId != actFollow.Object {
+	myUserUrl := ib.idb.UserUrl(receivingUser)
+	if myUserUrl != actFollow.Object {
 		msg := fmt.Sprintf("Follow activity sent to inbox of %s, but object is %s", receivingUser, actFollow.Object)
 		ib.logger.Warn(msg)
 		reqProblem = msg
@@ -77,12 +81,15 @@ func (ib *inbox) HandleFollow(
 		return
 	}
 
-	ib.repo.AddFollower(&dal.Follower{
-		User:        actFollow.Actor,
+	err = ib.repo.AddFollower(receivingUser, &dal.MastodonUserInfo{
+		UserUrl:     actFollow.Actor,
 		Handle:      senderInfo.PreferredUserName,
 		Host:        actorUrl.Hostname(),
 		SharedInbox: senderInfo.Endpoints.SharedInbox,
 	})
+	if err != nil {
+		return "", err
+	}
 
 	go ib.sendFollowAccept(receivingUser, senderInfo.Inbox, &actFollow)
 
@@ -144,6 +151,15 @@ func (ib *inbox) handleUnfollow(receivingUser string, bodyBytes []byte) (reqProb
 
 	reqProblem = ""
 	err = nil
+	var userExists bool
+	userExists, err = ib.repo.DoesAccountExist(receivingUser)
+	if err != nil {
+		return
+	}
+	if !userExists {
+		reqProblem = fmt.Sprintf("User does not exist: %s", receivingUser)
+		return
+	}
 
 	// Now parse the embeded object
 	var actUndoFollow dto.ActivityIn[dto.ActivityIn[string]]
@@ -165,7 +181,7 @@ func (ib *inbox) handleUnfollow(receivingUser string, bodyBytes []byte) (reqProb
 		return
 	}
 
-	ib.repo.RemoveFollower(actUndoFollow.Actor)
+	err = ib.repo.RemoveFollower(receivingUser, actUndoFollow.Actor)
 
 	return
 }
