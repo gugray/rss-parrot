@@ -92,7 +92,7 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 			"https://w3id.org/security/v1",
 		},
 		Id:                userUrl,
-		Type:              "Person",
+		Type:              "Service",
 		PreferredUserName: user,
 		Name:              acct.Name,
 		Summary:           acct.Summary,

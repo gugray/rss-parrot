@@ -8,7 +8,7 @@ import (
 )
 
 type IMessenger interface {
-	SendReply(byUser, toMoniker, toUserUrl, toInbox, msg string)
+	SendReply(byUser, toMoniker, toUserUrl, toInbox, inReplyTo, msg string)
 	Broadcast(user string, published, message string) error
 }
 
@@ -38,12 +38,12 @@ func NewMessenger(
 	}
 }
 
-func (m *messenger) SendReply(byUser, toMoniker, toUserUrl, toInbox, msg string) {
+func (m *messenger) SendReply(byUser, toMoniker, toUserUrl, toInbox, inReplyTo, msg string) {
 	to := []string{toUserUrl}
 	cc := []string{}
 	published := time.Now().UTC().Format(time.RFC3339)
 	tag := dto.Tag{Type: "Mention", Href: toUserUrl, Name: toMoniker}
-	err := m.sendToInbox(byUser, to, cc, toInbox, published, msg, &[]dto.Tag{tag})
+	err := m.sendToInbox(byUser, to, cc, toInbox, &inReplyTo, published, msg, &[]dto.Tag{tag})
 	if err != nil {
 		m.logger.Errorf("Failed to send reply to %s", toUserUrl)
 	}
@@ -67,7 +67,7 @@ func (m *messenger) Broadcast(user, published, message string) error {
 	to := []string{shared.ActivityPublic}
 	for inboxUrl := range inboxes {
 		userFollowers := m.idb.UserFollowers(user)
-		err = m.sendToInbox(user, to, []string{userFollowers}, inboxUrl, published, message, nil)
+		err = m.sendToInbox(user, to, []string{userFollowers}, inboxUrl, nil, published, message, nil)
 		if err != nil {
 			return err
 		}
@@ -76,8 +76,8 @@ func (m *messenger) Broadcast(user, published, message string) error {
 	return nil
 }
 
-func (m *messenger) sendToInbox(byUser string, to, cc []string, toInbox, published,
-	message string, tag *[]dto.Tag) error {
+func (m *messenger) sendToInbox(byUser string, to, cc []string, toInbox string,
+	inReplyTo *string, published, message string, tag *[]dto.Tag) error {
 
 	m.logger.Infof("Sending to inbox: %s", toInbox)
 
@@ -93,7 +93,7 @@ func (m *messenger) sendToInbox(byUser string, to, cc []string, toInbox, publish
 		Published:    published,
 		Summary:      nil,
 		AttributedTo: m.idb.UserUrl(byUser),
-		InReplyTo:    nil,
+		InReplyTo:    inReplyTo,
 		Content:      message,
 		To:           to,
 		Cc:           cc,

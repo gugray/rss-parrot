@@ -51,12 +51,12 @@ type OrderedListSummary struct {
 }
 
 type ActivityInBase struct {
-	Id     string                 `json:"id"`
-	Type   string                 `json:"type"`
-	Actor  string                 `json:"actor"`
-	To     []string               `json:"to"`
-	Cc     []string               `json:"cc"`
-	Object map[string]interface{} `json:"object"`
+	Id     string   `json:"id"`
+	Type   string   `json:"type"`
+	Actor  string   `json:"actor"`
+	To     []string `json:"to"`
+	Cc     []string `json:"cc"`
+	Object any      `json:"object"`
 }
 
 type ActivityIn[T any] struct {

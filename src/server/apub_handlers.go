@@ -147,12 +147,12 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// DBG
-	//hg.logger.Debug(string(bodyBytes))
+	hg.logger.Debug(string(bodyBytes))
 
 	// First, parse a rudimentary version of the activity to check signature, find out activity type
 	var act dto.ActivityInBase
 	if err = json.Unmarshal(bodyBytes, &act); err != nil {
-		hg.logger.Infof("Invalid JSON in request body: %s", string(bodyBytes))
+		hg.logger.Infof("Invalid JSON in request body: %v: %s", err, string(bodyBytes))
 		writeErrorResponse(w, "Request body is not valid JSON", http.StatusBadRequest)
 		return
 	}
@@ -181,6 +181,15 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 		writeErrorResponse(w, "Signer does not match actor", http.StatusUnauthorized)
 	}
 
+	// Find out Object's type if object field is, well, an object
+	// If yes, grab object type field
+	objectType := ""
+	if objMap, ok := act.Object.(map[string]interface{}); ok {
+		if objTypeStr, ok := objMap["type"].(string); ok {
+			objectType = objTypeStr
+		}
+	}
+
 	// Handle different activities
 	var reqProblem string
 	if act.Type == "Follow" {
@@ -188,10 +197,8 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 	} else if act.Type == "Undo" {
 		reqProblem, err = hg.inbox.HandleUndo(userName, senderInfo, bodyBytes)
 	} else if act.Type == "Create" {
-		if objTypeStr, ok := act.Object["type"].(string); ok {
-			if objTypeStr == "Note" {
-				reqProblem, err = hg.inbox.HandleCreateNote(act, senderInfo, bodyBytes)
-			}
+		if objectType == "Note" {
+			reqProblem, err = hg.inbox.HandleCreateNote(act, senderInfo, bodyBytes)
 		}
 	}
 

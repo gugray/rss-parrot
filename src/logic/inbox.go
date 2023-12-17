@@ -215,7 +215,7 @@ func (ib *inbox) HandleCreateNote(
 	reqProblem = ""
 	err = nil
 
-	// Find my user name, and public stream
+	// Is it addressed to both me, and "public"?
 	birbUsrUrl := ib.idb.UserUrl(ib.cfg.Birb.User)
 	toMe := false
 	toPublicOrFollowers := false
@@ -238,8 +238,16 @@ func (ib *inbox) HandleCreateNote(
 		return
 	}
 
+	// Parse activity with Note object
+	var act dto.ActivityIn[dto.Note]
+	if jsonErr := json.Unmarshal(bodyBytes, &act); jsonErr != nil {
+		ib.logger.Info("Invalid JSON in Create Note activity body")
+		reqProblem = fmt.Sprintf("Invalid JSON: %d", jsonErr)
+		return
+	}
+
 	// So, we will reply *something* with a mention.
-	// Let's get the user's moniker!
+	// Let's get the sender's moniker! -> @twilliability@genart.social
 	var senderHostName string
 	senderHostName, err = shared.GetHostName(senderInfo.Id)
 	if err != nil {
@@ -254,7 +262,7 @@ func (ib *inbox) HandleCreateNote(
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})
-		go ib.messenger.SendReply(ib.cfg.Birb.User, moniker, actBase.Actor, senderInfo.Inbox, msg)
+		go ib.messenger.SendReply(ib.cfg.Birb.User, moniker, actBase.Actor, senderInfo.Inbox, act.Object.Id, msg)
 		return
 	}
 
