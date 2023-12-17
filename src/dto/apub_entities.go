@@ -51,25 +51,31 @@ type OrderedListSummary struct {
 }
 
 type ActivityInBase struct {
-	Id     string `json:"id"`
-	Type   string `json:"type"`
-	Actor  string `json:"actor"`
-	Object any    `json:"object"`
+	Id     string                 `json:"id"`
+	Type   string                 `json:"type"`
+	Actor  string                 `json:"actor"`
+	To     []string               `json:"to"`
+	Cc     []string               `json:"cc"`
+	Object map[string]interface{} `json:"object"`
 }
 
 type ActivityIn[T any] struct {
-	Id     string `json:"id"`
-	Type   string `json:"type"`
-	Actor  string `json:"actor"`
-	Object T      `json:"object"`
+	Id     string   `json:"id"`
+	Type   string   `json:"type"`
+	Actor  string   `json:"actor"`
+	To     []string `json:"to"`
+	Cc     []string `json:"cc"`
+	Object T        `json:"object"`
 }
 
 type ActivityOut struct {
-	Context any    `json:"@context"`
-	Id      string `json:"id"`
-	Type    string `json:"type"`
-	Actor   string `json:"actor"`
-	Object  any    `json:"object,omitempty"`
+	Context any       `json:"@context"`
+	Id      string    `json:"id"`
+	Type    string    `json:"type"`
+	Actor   string    `json:"actor"`
+	To      *[]string `json:"to,omitempty"`
+	Cc      *[]string `json:"cc,omitempty"`
+	Object  any       `json:"object,omitempty"`
 }
 
 type Note struct {
@@ -82,4 +88,11 @@ type Note struct {
 	Content      string   `json:"content"`
 	To           []string `json:"to"`
 	Cc           []string `json:"cc"`
+	Tag          *[]Tag   `json:"tag,omitempty"`
+}
+
+type Tag struct {
+	Type string `json:"type"`
+	Href string `json:"href"`
+	Name string `json:"name"`
 }

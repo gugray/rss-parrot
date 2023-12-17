@@ -2,8 +2,25 @@ package shared
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 )
+
+const ActivityPublic = "https://www.w3.org/ns/activitystreams#Public"
+
+func GetHostName(userUrl string) (string, error) {
+	var parsedUrl *url.URL
+	var urlError error
+	parsedUrl, urlError = url.Parse(userUrl)
+	if urlError != nil {
+		return "", fmt.Errorf("Failed to parse user URL '%s': %v", userUrl, urlError)
+	}
+	return parsedUrl.Hostname(), nil
+}
+
+func MakeFullMoniker(hostName, handle string) string {
+	return "@" + handle + "@" + hostName
+}
 
 type IdBuilder struct {
 	Host string

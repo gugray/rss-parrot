@@ -48,7 +48,7 @@ func main() {
 			logic.NewActivitySender,
 			logic.NewHttpSigChecker,
 			logic.NewUserRetriever,
-			logic.NewBroadcaster,
+			logic.NewMessenger,
 			logic.NewInbox,
 			texts.NewTexts,
 			dal.NewRepo,

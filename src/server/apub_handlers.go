@@ -49,8 +49,8 @@ func (hg *apubHandlerGroup) GroupDefs() []handlerDef {
 		{"GET", "/u/{user}/outbox", func(w http.ResponseWriter, r *http.Request) { hg.getUserOutbox(w, r) }},
 		{"GET", "/u/{user}/followers", func(w http.ResponseWriter, r *http.Request) { hg.getUserFollowers(w, r) }},
 		{"GET", "/u/{user}/following", func(w http.ResponseWriter, r *http.Request) { hg.getUserFollowing(w, r) }},
-		{"POST", "/u/{user}/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postUserInbox(w, r) }},
-		{"POST", "/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postUserInbox(w, r) }},
+		{"POST", "/u/{user}/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postInbox(w, r) }},
+		{"POST", "/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postInbox(w, r) }},
 	}
 }
 
@@ -134,7 +134,7 @@ func (hg *apubHandlerGroup) getUserFollowing(w http.ResponseWriter, r *http.Requ
 	writeJsonResponse(hg.logger, w, summary)
 }
 
-func (hg *apubHandlerGroup) postUserInbox(w http.ResponseWriter, r *http.Request) {
+func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	hg.logger.Infof("Handling user inbox POST: %s", r.URL.Path)
@@ -146,10 +146,13 @@ func (hg *apubHandlerGroup) postUserInbox(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// DBG
+	//hg.logger.Debug(string(bodyBytes))
+
 	// First, parse a rudimentary version of the activity to check signature, find out activity type
 	var act dto.ActivityInBase
 	if err = json.Unmarshal(bodyBytes, &act); err != nil {
-		hg.logger.Info("Invalid JSON in request body")
+		hg.logger.Infof("Invalid JSON in request body: %s", string(bodyBytes))
 		writeErrorResponse(w, "Request body is not valid JSON", http.StatusBadRequest)
 		return
 	}
@@ -178,15 +181,18 @@ func (hg *apubHandlerGroup) postUserInbox(w http.ResponseWriter, r *http.Request
 		writeErrorResponse(w, "Signer does not match actor", http.StatusUnauthorized)
 	}
 
-	// DBG
-	//hg.logger.Debug(string(bodyBytes))
-
 	// Handle different activities
 	var reqProblem string
 	if act.Type == "Follow" {
 		reqProblem, err = hg.inbox.HandleFollow(userName, senderInfo, bodyBytes)
 	} else if act.Type == "Undo" {
 		reqProblem, err = hg.inbox.HandleUndo(userName, senderInfo, bodyBytes)
+	} else if act.Type == "Create" {
+		if objTypeStr, ok := act.Object["type"].(string); ok {
+			if objTypeStr == "Note" {
+				reqProblem, err = hg.inbox.HandleCreateNote(act, senderInfo, bodyBytes)
+			}
+		}
 	}
 
 	if err != nil {

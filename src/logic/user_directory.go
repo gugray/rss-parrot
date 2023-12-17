@@ -65,13 +65,15 @@ func (udir *userDirectory) GetWebfinger(user string) *dto.WebfingerResp {
 	return &resp
 }
 
-func (udir *userDirectory) patchSpecialAccount(acct *dal.Account) {
+func (udir *userDirectory) patchSpecialAccount(acct *dal.Account) bool {
 	if acct.Handle == udir.cfg.Birb.User {
 		acct.Name = udir.txt.Get("birb_name.txt")
 		acct.Summary = udir.txt.Get("birb_bio.html")
 		acct.PubKey = udir.cfg.Birb.PubKey
 		acct.ProfileImageUrl = udir.cfg.Birb.ProfilePic
+		return true
 	}
+	return false
 }
 
 func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
@@ -82,7 +84,7 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 	if err != nil || acct == nil {
 		return nil // TODO errors
 	}
-	udir.patchSpecialAccount(acct)
+	builtIn := udir.patchSpecialAccount(acct)
 
 	resp := dto.UserInfo{
 		Context: []string{
@@ -94,7 +96,7 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 		PreferredUserName: user,
 		Name:              acct.Name,
 		Summary:           acct.Summary,
-		ManuallyApproves:  false,
+		ManuallyApproves:  builtIn,
 		Published:         acct.CreatedAt.Format(time.RFC3339),
 		Inbox:             udir.idb.UserInbox(user),
 		Outbox:            udir.idb.UserOutbox(user),

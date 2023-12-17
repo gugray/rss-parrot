@@ -13,7 +13,7 @@ type cmdbHandlerGroup struct {
 	logger      shared.ILogger
 	keyHandler  logic.IKeyHandler
 	sender      logic.IActivitySender
-	broadcaster logic.IBroadcaster
+	broadcaster logic.IMessenger
 }
 
 func NewCmdHandlerGroup(
@@ -21,7 +21,7 @@ func NewCmdHandlerGroup(
 	logger shared.ILogger,
 	keyHandler logic.IKeyHandler,
 	sender logic.IActivitySender,
-	broadcaster logic.IBroadcaster,
+	broadcaster logic.IMessenger,
 ) IHandlerGroup {
 	res := cmdbHandlerGroup{
 		cfg:         cfg,

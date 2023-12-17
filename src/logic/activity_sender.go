@@ -43,6 +43,9 @@ func (sender *activitySender) Send(
 	bodyJson, _ := json.Marshal(activity)
 	dateStr := time.Now().UTC().Format(http.TimeFormat)
 
+	// DBG
+	//fmt.Println(string(bodyJson))
+
 	req, err := http.NewRequest("POST", inboxUrl, bytes.NewBuffer(bodyJson))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("host", host)
