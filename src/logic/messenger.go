@@ -8,8 +8,13 @@ import (
 )
 
 type IMessenger interface {
-	SendReply(byUser, toMoniker, toUserUrl, toInbox, inReplyTo, msg string)
+	SendMessage(byUser string, toInbox, msg string, mention *MsgMention, to, cc []string, inReplyTo string)
 	Broadcast(user string, published, message string) error
+}
+
+type MsgMention struct {
+	Moniker string
+	UserUrl string
 }
 
 type messenger struct {
@@ -38,14 +43,17 @@ func NewMessenger(
 	}
 }
 
-func (m *messenger) SendReply(byUser, toMoniker, toUserUrl, toInbox, inReplyTo, msg string) {
-	to := []string{toUserUrl}
-	cc := []string{}
+func (m *messenger) SendMessage(byUser string, toInbox, msg string,
+	mention *MsgMention, to, cc []string, inReplyTo string,
+) {
 	published := time.Now().UTC().Format(time.RFC3339)
-	tag := dto.Tag{Type: "Mention", Href: toUserUrl, Name: toMoniker}
-	err := m.sendToInbox(byUser, to, cc, toInbox, &inReplyTo, published, msg, &[]dto.Tag{tag})
+	var tag *[]dto.Tag
+	if mention != nil {
+		tag = &[]dto.Tag{{Type: "Mention", Href: mention.UserUrl, Name: mention.Moniker}}
+	}
+	err := m.sendToInbox(byUser, to, cc, toInbox, &inReplyTo, published, msg, tag)
 	if err != nil {
-		m.logger.Errorf("Failed to send reply to %s", toUserUrl)
+		m.logger.Errorf("Failed to send message to inbox %s", toInbox)
 	}
 }
 

@@ -26,6 +26,12 @@ var logger *log.Logger
 
 func main() {
 
+	//DBG
+	//r := regexp.MustCompile(`<link [^>]*type=["']?application/(rss|atom)\\+xml["']?[^>]*>`)
+	//r := regexp.MustCompile(`<link [^>]*type=["']?application/(rss|atom)\+xml`)
+	//s := r.FindString(`<link rel="alternate" type="application/rss+xml" title="RSS" href="/rss/">`)
+	//fmt.Println(s)
+
 	cfg := shared.LoadConfig()
 	provideConfig := func() *shared.Config {
 		return cfg
@@ -44,6 +50,7 @@ func main() {
 			server.NewHTTPServer,
 			fx.Annotate(server.NewMux, fx.ParamTags(`group:"handler_group"`)),
 			logic.NewKeyHandler,
+			logic.NewFeedFollower,
 			logic.NewUserDirectory,
 			logic.NewActivitySender,
 			logic.NewHttpSigChecker,

@@ -3,6 +3,8 @@ package logic
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/microcosm-cc/bluemonday"
+	"net/url"
 	"regexp"
 	"rss_parrot/dal"
 	"rss_parrot/dto"
@@ -26,7 +28,9 @@ type inbox struct {
 	keyHandler      IKeyHandler
 	sender          IActivitySender
 	messenger       IMessenger
+	fdfol           IFeedFollower
 	reUserUrlParser *regexp.Regexp
+	reHttps         *regexp.Regexp
 }
 
 func NewInbox(
@@ -37,10 +41,13 @@ func NewInbox(
 	keyHandler IKeyHandler,
 	sender IActivitySender,
 	messenger IMessenger,
+	fdfol IFeedFollower,
 ) IInbox {
 	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/u/([^/]+)/?")
-	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt, keyHandler,
-		sender, messenger, reUserUrlParser}
+	reHttps := regexp.MustCompile("https://[^ ]+")
+	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt,
+		keyHandler, sender, messenger, fdfol,
+		reUserUrlParser, reHttps}
 }
 
 func (ib *inbox) HandleFollow(
@@ -252,19 +259,77 @@ func (ib *inbox) HandleCreateNote(
 	senderHostName, err = shared.GetHostName(senderInfo.Id)
 	if err != nil {
 		reqProblem = fmt.Sprintf("Failed to extract host from sender ID %s: %d", senderInfo.Id, err)
+		ib.logger.Info(reqProblem)
 		return
 	}
 	moniker := shared.MakeFullMoniker(senderHostName, senderInfo.PreferredUserName)
 
 	// If not public: reply that we don't do DMs
 	if !toPublicOrFollowers {
+		ib.logger.Info("Message we got is a DM")
 		msg := ib.txt.WithVals("reply_no_dm.html", map[string]string{
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})
-		go ib.messenger.SendReply(ib.cfg.Birb.User, moniker, actBase.Actor, senderInfo.Inbox, act.Object.Id, msg)
+		go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+			&MsgMention{moniker, act.Actor},
+			[]string{act.Actor}, []string{},
+			act.Object.Id)
 		return
 	}
+
+	// Look for exactly 1 valid URL in message
+	blogUrl := ib.getUrl(act.Object.Content)
+	if blogUrl == "" {
+		ib.logger.Info("No single URL found in message")
+		msg := ib.txt.WithVals("reply_no_single_url.html", map[string]string{
+			"moniker": moniker,
+			"userUrl": senderInfo.Id,
+		})
+		go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+			&MsgMention{moniker, act.Actor},
+			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
+			act.Object.Id)
+		return
+	}
+
+	go ib.handleSiteRequest(senderInfo, act, moniker, blogUrl)
+
+	return
+}
+
+func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[dto.Note], moniker, blogUrl string) {
+
+	stInfo := ib.fdfol.GetSiteInfo(blogUrl)
+
+	if stInfo == nil {
+		ib.logger.Infof("Could not retrieve RSS feed for site: %s", blogUrl)
+		msg := ib.txt.WithVals("reply_site_not_found.html", map[string]string{
+			"moniker": moniker,
+			"userUrl": senderInfo.Id,
+		})
+		go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+			&MsgMention{moniker, act.Actor},
+			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
+			act.Object.Id)
+		return
+	}
+
+	ib.logger.Infof("Feed for site retrieved: %s -> %s", blogUrl, stInfo.FeedUrl)
+	msg := ib.txt.WithVals("reply_got_feed.html", map[string]string{
+		"moniker":         moniker,
+		"userUrl":         senderInfo.Id,
+		"siteURL":         stInfo.Url,
+		"feedURL":         stInfo.FeedUrl,
+		"siteTitle":       stInfo.Title,
+		"siteDescription": stInfo.Description,
+	})
+	go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+		&MsgMention{moniker, act.Actor},
+		[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
+		act.Object.Id)
+
+	// @birb@rss-parrot.zydeo.net https://soatok.blog/b/
 
 	// TODO
 	// Parse URL out of message
@@ -273,5 +338,24 @@ func (ib *inbox) HandleCreateNote(
 	// We need a 'scheduled_poller' that automates/coordinates feed_follower and broadcaster
 	// Go -> [init feed / find existing; send reply based on outcome]
 
-	return
+}
+
+func (ib *inbox) getUrl(content string) string {
+
+	pol := bluemonday.StrictPolicy()
+	plain := pol.Sanitize(content)
+	matches := ib.reHttps.FindAllString(plain, -1)
+	// Looking for exactly one valid Url
+	res := ""
+	for _, str := range matches {
+		_, err := url.Parse(str)
+		if err != nil {
+			continue
+		}
+		if res != "" {
+			return ""
+		}
+		res = str
+	}
+	return res
 }
