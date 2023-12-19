@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"rss_parrot/shared"
+	"strings"
 )
 
 type IFeedFollower interface {
@@ -68,37 +69,64 @@ func (ff *feedFollower) getSite(url string) *[]byte {
 	return &bodyBytes
 }
 
+func (ff *feedFollower) getFeedUrl(body string, siteUrl *url.URL) string {
+	feedTags := ff.reFeedTag.FindAllString(body, -1)
+	res := ""
+	resIsRss := false
+	for _, feedTag := range feedTags {
+		// Some links we find are not even the feeds we want
+		// <link rel="service.post" type="application/atom+xml" title="..." />
+		if !strings.Contains(feedTag, "alternate") {
+			continue
+		}
+		// If there are multiple feeds, we want the RSS one
+		isRss := strings.Contains(feedTag, "rss+xml")
+		if res != "" && resIsRss && !isRss {
+			continue
+		}
+		// Get the href value
+		groups := ff.reFeedValue.FindStringSubmatch(feedTag)
+		if groups == nil {
+			continue
+		}
+		feedUrlStr := groups[2]
+		if feedUrlStr == "" {
+			feedUrlStr = groups[3]
+		}
+		// Make it absolute
+		feedUrl, err := url.Parse(feedUrlStr)
+		if err != nil {
+			continue
+		}
+		if !feedUrl.IsAbs() {
+			feedUrl = siteUrl.ResolveReference(feedUrl)
+		}
+		// It's a keeper
+		res = feedUrl.String()
+		res = strings.TrimRight(res, "/")
+		resIsRss = isRss
+
+	}
+	return res
+}
+
 func (ff *feedFollower) extractSiteInfo(siteUrlStr, body string) *SiteInfo {
 
 	var res SiteInfo
+
+	siteUrlStr = strings.TrimRight(siteUrlStr, "/")
 	res.Url = siteUrlStr
 
 	siteUrl, err := url.Parse(siteUrlStr)
 	if err != nil {
 		return nil
 	}
-	feedTag := ff.reFeedTag.FindString(body)
-	if feedTag == "" {
+	res.FeedUrl = ff.getFeedUrl(body, siteUrl)
+	if res.FeedUrl == "" {
 		return nil
 	}
-	groups := ff.reFeedValue.FindStringSubmatch(feedTag)
-	if groups == nil {
-		return nil
-	}
-	feedUrlStr := groups[2]
-	if feedUrlStr == "" {
-		feedUrlStr = groups[3]
-	}
-	feedUrl, err := url.Parse(feedUrlStr)
-	if err != nil {
-		return nil
-	}
-	if !feedUrl.IsAbs() {
-		feedUrl = siteUrl.ResolveReference(feedUrl)
-	}
-	res.FeedUrl = feedUrl.String()
 
-	groups = ff.reTitle.FindStringSubmatch(body)
+	groups := ff.reTitle.FindStringSubmatch(body)
 	if groups != nil {
 		res.Title = groups[1]
 	}
