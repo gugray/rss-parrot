@@ -25,7 +25,7 @@ type Mention struct {
 }
 
 type FeedPost struct {
-	PostGuidHash int
+	PostGuidHash int64
 	PostTime     time.Time
 	Link         string
 	Title        string
@@ -33,10 +33,19 @@ type FeedPost struct {
 }
 
 type Toot struct {
-	PostGuidHash int
+	PostGuidHash int64
 	TootedAt     time.Time
 	StatusId     string
 	Content      string
+}
+
+type TootQueueItem struct {
+	Id          int
+	SendingUser string
+	ToInbox     string
+	TootedAt    time.Time
+	StatusId    string
+	Content     string
 }
 
 type MastodonUserInfo struct {

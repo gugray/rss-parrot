@@ -44,8 +44,8 @@ func (cmd *cmdbHandlerGroup) getToot(w http.ResponseWriter, r *http.Request) {
 
 	cmd.logger.Info("Toot: Request received")
 
-	user := cmd.cfg.Birb.User
-	cmd.broadcaster.Broadcast(user, "2023-12-13T21:40:37Z", "Hello, world! The bird is a-tooting.")
+	//user := cmd.cfg.Birb.User
+	//cmd.broadcaster.EnqueueBroadcast(user, "2023-12-13T21:40:37Z", "Hello, world! The bird is a-tooting.")
 }
 
 func (cmd *cmdbHandlerGroup) getFollow(w http.ResponseWriter, r *http.Request) {

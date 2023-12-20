@@ -2,8 +2,9 @@ package logic
 
 import (
 	"github.com/PuerkitoBio/goquery"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/mmcdole/gofeed"
-	"github.com/twmb/murmur3"
+	"github.com/spaolacci/murmur3"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 
 type IFeedFollower interface {
 	GetAccountForFeed(urlStr string) *dal.Account
+	DbgCheckFeed(accountHandle string) error // TODO Remove
 }
 
 type SiteInfo struct {
@@ -31,6 +33,7 @@ type feedFollower struct {
 	cfg        *shared.Config
 	logger     shared.ILogger
 	repo       dal.IRepo
+	messenger  IMessenger
 	txt        texts.ITexts
 	keyHandler IKeyHandler
 }
@@ -39,6 +42,7 @@ func NewFeedFollower(
 	cfg *shared.Config,
 	logger shared.ILogger,
 	repo dal.IRepo,
+	messenger IMessenger,
 	txt texts.ITexts,
 	keyHandler IKeyHandler,
 ) IFeedFollower {
@@ -46,6 +50,7 @@ func NewFeedFollower(
 		cfg:        cfg,
 		logger:     logger,
 		repo:       repo,
+		messenger:  messenger,
 		txt:        txt,
 		keyHandler: keyHandler,
 	}
@@ -181,13 +186,18 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed) {
 	return &res, feed
 }
 
-func getGuidHash(guid string) int {
+func getGuidHash(guid string) uint {
 	hasher := murmur3.New32()
-	hash, _ := hasher.Write([]byte(guid))
-	return hash
+	_, _ = hasher.Write([]byte(guid))
+	return uint(hasher.Sum32())
 }
 
-func (ff *feedFollower) updateAccountPosts(accountId int, feed *gofeed.Feed, tootNew bool) (err error) {
+func (ff *feedFollower) updateAccountPosts(
+	accountId int,
+	accountHandle string,
+	feed *gofeed.Feed,
+	tootNew bool,
+) (err error) {
 	err = nil
 	var lastKnownFeedUpdated time.Time
 
@@ -205,7 +215,7 @@ func (ff *feedFollower) updateAccountPosts(accountId int, feed *gofeed.Feed, too
 		if postTime.After(newLastUpdated) {
 			newLastUpdated = postTime
 		}
-		if err = ff.storePostIfNew(accountId, postTime, itm, tootNew); err != nil {
+		if err = ff.storePostIfNew(accountId, accountHandle, postTime, itm, tootNew); err != nil {
 			return
 		}
 	}
@@ -241,33 +251,71 @@ func (ff *feedFollower) getNextCheckTime(lastChanged time.Time) time.Time {
 	return res
 }
 
+func stripHtml(htm string) string {
+	p := bluemonday.StripTagsPolicy()
+	plain := p.Sanitize(htm)
+	return plain
+}
+
 func (ff *feedFollower) storePostIfNew(
 	accountId int,
+	accountHandle string,
 	postTime time.Time,
 	itm *gofeed.Item,
 	tootNew bool,
 ) (err error) {
 	var isNew bool
+	plainTitle := stripHtml(itm.Title)
+	plainDescription := stripHtml(itm.Description)
 	isNew, err = ff.repo.AddFeedPostIfNew(accountId, &dal.FeedPost{
-		PostGuidHash: getGuidHash(itm.Link),
+		PostGuidHash: int64(getGuidHash(itm.GUID)),
 		PostTime:     postTime,
 		Link:         itm.Link,
-		Title:        itm.Title,
-		Desription:   itm.Description,
+		Title:        plainTitle,
+		Desription:   plainDescription,
 	})
 	if err != nil {
 		return
 	}
-	if isNew && tootNew {
-		if err = ff.createToot(accountId, itm); err != nil {
+	if isNew {
+		if err = ff.createToot(accountId, accountHandle, itm, tootNew); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (ff *feedFollower) createToot(accountId int, itm *gofeed.Item) error {
-	// TODO
+func (ff *feedFollower) createToot(accountId int, accountHandle string, itm *gofeed.Item, sendToot bool) error {
+	prettyUrl := itm.Link
+	prettyUrl = strings.TrimPrefix(prettyUrl, "http://")
+	prettyUrl = strings.TrimPrefix(prettyUrl, "https://")
+	prettyUrl = strings.TrimRight(prettyUrl, "/")
+	plainTitle := stripHtml(itm.Title)
+	plainDescription := stripHtml(itm.Description)
+	content := ff.txt.WithVals("toot_new_post.html", map[string]string{
+		"title":       plainTitle,
+		"url":         itm.Link,
+		"prettyUrl":   prettyUrl,
+		"description": plainDescription,
+	})
+	idb := shared.IdBuilder{ff.cfg.Host}
+	id := ff.repo.GetNextId()
+	statusId := idb.UserStatus(accountHandle, id)
+	tootedAt := time.Now()
+	err := ff.repo.AddToot(accountId, &dal.Toot{
+		PostGuidHash: int64(getGuidHash(itm.GUID)),
+		TootedAt:     tootedAt,
+		StatusId:     statusId,
+		Content:      content,
+	})
+	if err != nil {
+		return err
+	}
+	if sendToot {
+		if err = ff.messenger.EnqueueBroadcast(accountHandle, statusId, tootedAt, content); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -317,11 +365,33 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) *dal.Account {
 		return nil
 	}
 
-	err = ff.updateAccountPosts(acct.Id, feed, false)
+	err = ff.updateAccountPosts(acct.Id, si.ParrotHandle, feed, false)
 	if err != nil {
 		ff.logger.Errorf("Failed to update account's posts: %s: %v", acct.Handle, err)
 		return nil
 	}
 
 	return acct
+}
+
+func (ff *feedFollower) DbgCheckFeed(accountHandle string) error {
+
+	var err error
+	var acct *dal.Account
+
+	if acct, err = ff.repo.GetAccount(accountHandle); err != nil {
+		return err
+	}
+
+	fp := gofeed.NewParser()
+	var feed *gofeed.Feed
+	if feed, err = fp.ParseURL(acct.FeedUrl); err != nil {
+		return err
+	}
+
+	if err = ff.updateAccountPosts(acct.Id, acct.Handle, feed, true); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -23,14 +23,19 @@ type IRepo interface {
 	DoesAccountExist(user string) (bool, error)
 	GetPrivKey(user string) (string, error)
 	GetAccount(user string) (*Account, error)
-	GetPostCount(user string) (uint, error)
+	GetTootCount(user string) (uint, error)
+	AddToot(accountId int, toot *Toot) error
 	GetFeedLastUpdated(accountId int) (time.Time, error)
 	UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error
 	AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error)
 	GetFollowerCount(user string) (uint, error)
-	GetFollowers(user string) ([]*MastodonUserInfo, error)
+	GetFollowersByUser(user string) ([]*MastodonUserInfo, error)
+	GetFollowersById(accountId int) ([]*MastodonUserInfo, error)
 	AddFollower(user string, follower *MastodonUserInfo) error
 	RemoveFollower(user, followerUserUrl string) error
+	AddTootQueueItem(tqi *TootQueueItem) error
+	GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, error)
+	DeleteTootQueueItem(id int) error
 }
 
 type Repo struct {
@@ -235,8 +240,25 @@ func (repo *Repo) SetPrivKey(user, privKey string) error {
 	return nil
 }
 
-func (repo *Repo) GetPostCount(user string) (uint, error) {
-	return 734, nil
+func (repo *Repo) GetTootCount(user string) (uint, error) {
+	row := repo.db.QueryRow(`SELECT COUNT(*) FROM toots JOIN accounts
+		ON toots.account_id=accounts.id AND accounts.handle=?`, user)
+	var err error
+	var count int
+	if err = row.Scan(&count); err != nil {
+		return 0, err
+	}
+	return uint(count), nil
+}
+
+func (repo *Repo) AddToot(accountId int, toot *Toot) error {
+	_, err := repo.db.Exec(`INSERT INTO toots (account_id, post_guid_hash, tooted_at, status_id, content)
+		VALUES(?, ?, ?, ?, ?)`,
+		accountId, toot.PostGuidHash, toot.TootedAt, toot.StatusId, toot.Content)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (repo *Repo) GetFollowerCount(user string) (uint, error) {
@@ -250,13 +272,28 @@ func (repo *Repo) GetFollowerCount(user string) (uint, error) {
 	return uint(count), nil
 }
 
-func (repo *Repo) GetFollowers(user string) ([]*MastodonUserInfo, error) {
+func (repo *Repo) GetFollowersByUser(user string) ([]*MastodonUserInfo, error) {
 	rows, err := repo.db.Query(`SELECT followers.user_url, followers.handle, host, shared_inbox
 		FROM followers JOIN accounts ON followers.account_id=accounts.id AND accounts.handle=?`, user)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	return readGetFollowers(rows)
+}
+
+func (repo *Repo) GetFollowersById(accountId int) ([]*MastodonUserInfo, error) {
+	rows, err := repo.db.Query(`SELECT user_url, handle, host, shared_inbox
+		FROM followers WHERE account_id=?`, accountId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return readGetFollowers(rows)
+}
+
+func readGetFollowers(rows *sql.Rows) ([]*MastodonUserInfo, error) {
+	var err error
 	res := make([]*MastodonUserInfo, 0)
 	for rows.Next() {
 		mui := MastodonUserInfo{}
@@ -340,4 +377,38 @@ func (repo *Repo) AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, e
 	}
 
 	return
+}
+
+func (repo *Repo) AddTootQueueItem(tqi *TootQueueItem) error {
+	_, err := repo.db.Exec(`INSERT INTO toot_queue (sending_user, to_inbox, tooted_at, status_id, content)
+		VALUES(?, ?, ?, ?, ?)`,
+		tqi.SendingUser, tqi.ToInbox, tqi.TootedAt, tqi.StatusId, tqi.Content)
+	return err
+}
+
+func (repo *Repo) GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, error) {
+	rows, err := repo.db.Query(`SELECT id, sending_user, to_inbox, tooted_at, status_id, content
+		FROM toot_queue WHERE id>? ORDER BY id ASC LIMIT ?`, aboveId, maxCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	res := make([]*TootQueueItem, 0, maxCount)
+	for rows.Next() {
+		tqi := TootQueueItem{}
+		err = rows.Scan(&tqi.Id, &tqi.SendingUser, &tqi.ToInbox, &tqi.TootedAt, &tqi.StatusId, &tqi.Content)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, &tqi)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (repo *Repo) DeleteTootQueueItem(id int) error {
+	_, err := repo.db.Exec(`DELETE FROM toot_queue WHERE id=?`, id)
+	return err
 }

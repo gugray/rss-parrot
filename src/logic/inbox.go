@@ -271,7 +271,7 @@ func (ib *inbox) HandleCreateNote(
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})
-		go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
 			[]*MsgMention{{moniker, act.Actor}},
 			[]string{act.Actor}, []string{},
 			act.Object.Id)
@@ -286,7 +286,7 @@ func (ib *inbox) HandleCreateNote(
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})
-		go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
 			[]*MsgMention{{moniker, act.Actor}},
 			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
 			act.Object.Id)
@@ -308,7 +308,7 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})
-		go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
 			[]*MsgMention{{moniker, act.Actor}},
 			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
 			act.Object.Id)
@@ -325,13 +325,14 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 		"accountMoniker": "@" + acct.Handle,
 		"accountUrl":     accountUrl,
 	})
-	go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+	go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
 		[]*MsgMention{{moniker, act.Actor}, {accountMoniker, accountUrl}},
 		[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
 		act.Object.Id)
 
 	// @birb@rss-parrot.zydeo.net https://soatok.blog/b/
 	// @birb@rss-parrot.zydeo.net https://magazine.sebastianraschka.com/
+	// @birb@rss-parrot.zydeo.net https://mastodon.social/@zydeobor
 
 	// TODO
 	// Parse URL out of message

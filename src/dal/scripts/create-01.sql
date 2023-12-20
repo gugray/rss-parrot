@@ -44,7 +44,7 @@ CREATE TABLE followers
 CREATE TABLE feed_posts
 (
     account_id     INT                                                       NOT NULL,
-    post_guid_hash INT                                                       NOT NULL,
+    post_guid_hash BIGINT                                                    NOT NULL,
     post_time      DATETIME                                                  NOT NULL,
     link           TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'     NOT NULL,
     title          TEXT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci' NOT NULL,
@@ -56,9 +56,20 @@ CREATE TABLE feed_posts
 CREATE TABLE toots
 (
     account_id     INT                                                       NOT NULL,
-    post_guid_hash INT                                                       NOT NULL DEFAULT 0,
+    post_guid_hash BIGINT                                                    NOT NULL DEFAULT 0,
     tooted_at      DATETIME                                                  NOT NULL,
     status_id      TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'     NOT NULL,
     content        TEXT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci' NOT NULL,
     CONSTRAINT FOREIGN KEY (account_id) REFERENCES accounts (id)
 );
+
+CREATE TABLE toot_queue
+(
+    id           INT                                                       NOT NULL AUTO_INCREMENT,
+    sending_user TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'     NOT NULL,
+    to_inbox     TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'     NOT NULL,
+    tooted_at    DATETIME                                                  NOT NULL,
+    status_id    TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'     NOT NULL,
+    content      TEXT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci' NOT NULL,
+    PRIMARY KEY (id)
+)

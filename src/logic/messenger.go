@@ -8,8 +8,8 @@ import (
 )
 
 type IMessenger interface {
-	SendMessage(byUser string, toInbox, msg string, mentions []*MsgMention, to, cc []string, inReplyTo string)
-	Broadcast(user string, published, message string) error
+	SendMessageSync(byUser string, toInbox, msg string, mentions []*MsgMention, to, cc []string, inReplyTo string)
+	EnqueueBroadcast(user string, statusId string, tootedAt time.Time, msg string) error
 }
 
 type MsgMention struct {
@@ -17,13 +17,18 @@ type MsgMention struct {
 	UserUrl string
 }
 
+const maxParallelSends = 5
+const tootLoopIdleWakeSec = 5
+
 type messenger struct {
-	cfg        *shared.Config
-	logger     shared.ILogger
-	repo       dal.IRepo
-	keyHandler IKeyHandler
-	sender     IActivitySender
-	idb        shared.IdBuilder
+	cfg             *shared.Config
+	logger          shared.ILogger
+	repo            dal.IRepo
+	keyHandler      IKeyHandler
+	sender          IActivitySender
+	idb             shared.IdBuilder
+	newTootsInQueue chan struct{}
+	tqProgress      map[int]interface{}
 }
 
 func NewMessenger(
@@ -33,7 +38,7 @@ func NewMessenger(
 	keyHandler IKeyHandler,
 	sender IActivitySender,
 ) IMessenger {
-	return &messenger{
+	m := messenger{
 		cfg:        cfg,
 		logger:     logger,
 		repo:       repo,
@@ -41,9 +46,13 @@ func NewMessenger(
 		sender:     sender,
 		idb:        shared.IdBuilder{cfg.Host},
 	}
+	m.newTootsInQueue = make(chan struct{})
+	m.tqProgress = make(map[int]interface{})
+	go m.tootQueueLoop()
+	return &m
 }
 
-func (m *messenger) SendMessage(byUser string, toInbox, msg string,
+func (m *messenger) SendMessageSync(byUser string, toInbox, msg string,
 	mentions []*MsgMention, to, cc []string, inReplyTo string,
 ) {
 	published := time.Now().UTC().Format(time.RFC3339)
@@ -61,9 +70,9 @@ func (m *messenger) SendMessage(byUser string, toInbox, msg string,
 	}
 }
 
-func (m *messenger) Broadcast(user, published, message string) error {
+func (m *messenger) EnqueueBroadcast(user string, statusId string, tootedAt time.Time, msg string) error {
 
-	followers, err := m.repo.GetFollowers(user)
+	followers, err := m.repo.GetFollowersByUser(user)
 	if err != nil {
 		return err
 	}
@@ -76,16 +85,94 @@ func (m *messenger) Broadcast(user, published, message string) error {
 		}
 	}
 
-	to := []string{shared.ActivityPublic}
+	// Create a queue item for each inbox
 	for inboxUrl := range inboxes {
-		userFollowers := m.idb.UserFollowers(user)
-		err = m.sendToInbox(user, to, []string{userFollowers}, inboxUrl, nil, published, message, nil)
+		err = m.repo.AddTootQueueItem(&dal.TootQueueItem{
+			SendingUser: user,
+			ToInbox:     inboxUrl,
+			TootedAt:    tootedAt,
+			StatusId:    statusId,
+			Content:     msg,
+		})
 		if err != nil {
 			return err
 		}
 	}
 
+	go func() {
+		m.newTootsInQueue <- struct{}{}
+	}()
+
 	return nil
+}
+
+func (m *messenger) tootQueueLoop() {
+
+	tootSent := make(chan int)
+
+	sendToots := func() {
+		if len(m.tqProgress) >= maxParallelSends {
+			return
+		}
+		maxId := -1
+		for id := range m.tqProgress {
+			maxId = max(maxId, id)
+		}
+		var err error
+		var items []*dal.TootQueueItem
+		items, err = m.repo.GetTootQueueItems(maxId, maxParallelSends-len(m.tqProgress))
+		if err != nil {
+			m.logger.Errorf("Failed to get toot queue items: %v", err)
+			return
+		}
+		for _, item := range items {
+			m.tqProgress[item.Id] = struct{}{}
+			go m.sendQueuedToot(item, tootSent)
+		}
+	}
+
+	removeSentToot := func(id int) {
+		if err := m.repo.DeleteTootQueueItem(id); err != nil {
+			m.logger.Errorf("Failed to remove sent toot from queue: %d: %v", id, err)
+		}
+		delete(m.tqProgress, id)
+	}
+
+	for {
+		select {
+		case <-m.newTootsInQueue:
+			m.logger.Debug("New toots in queue")
+			sendToots()
+		case <-time.After(tootLoopIdleWakeSec * time.Second):
+			m.logger.Debug("Periodic wakie")
+			sendToots()
+		case id := <-tootSent:
+			m.logger.Debugf("Toot sent: %d", id)
+			removeSentToot(id)
+			sendToots()
+		}
+	}
+}
+
+func (m *messenger) sendQueuedToot(item *dal.TootQueueItem, tootSent chan int) {
+
+	idb := shared.IdBuilder{m.cfg.Host}
+	to := []string{shared.ActivityPublic}
+	userFollowers := idb.UserFollowers(item.SendingUser)
+	err := m.sendToInbox(
+		item.SendingUser,
+		to,
+		[]string{userFollowers},
+		item.ToInbox,
+		nil,
+		item.TootedAt.UTC().Format(time.RFC3339),
+		item.Content,
+		nil)
+	if err != nil {
+		m.logger.Errorf("Failed to send queued toot: %v", err)
+	}
+
+	tootSent <- item.Id
 }
 
 func (m *messenger) sendToInbox(byUser string, to, cc []string, toInbox string,
