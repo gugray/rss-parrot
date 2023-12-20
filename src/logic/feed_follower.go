@@ -198,18 +198,7 @@ func (ff *feedFollower) updateAccountPosts(accountId int, feed *gofeed.Feed, too
 	newLastUpdated := lastKnownFeedUpdated
 	// Deal with feed items newer than our last seen
 	for _, itm := range feed.Items {
-		keeper := false
-		var postTime time.Time
-		if itm.PublishedParsed != nil && itm.PublishedParsed.After(lastKnownFeedUpdated) {
-			keeper = true
-			postTime = *itm.PublishedParsed
-		}
-		if itm.UpdatedParsed != nil && itm.UpdatedParsed.After(lastKnownFeedUpdated) {
-			keeper = true
-			if itm.UpdatedParsed.After(postTime) {
-				postTime = *itm.UpdatedParsed
-			}
-		}
+		keeper, postTime := checkItemTime(itm, lastKnownFeedUpdated)
 		if !keeper {
 			continue
 		}
@@ -224,6 +213,22 @@ func (ff *feedFollower) updateAccountPosts(accountId int, feed *gofeed.Feed, too
 	nextCheckDue := ff.getNextCheckTime(newLastUpdated)
 	if err = ff.repo.UpdateAccountFeedTimes(accountId, newLastUpdated, nextCheckDue); err != nil {
 		return
+	}
+	return
+}
+
+func checkItemTime(itm *gofeed.Item, latestKown time.Time) (keeper bool, postTime time.Time) {
+	keeper = false
+	postTime = time.Time{}
+	if itm.PublishedParsed != nil && itm.PublishedParsed.After(latestKown) {
+		keeper = true
+		postTime = *itm.PublishedParsed
+	}
+	if itm.UpdatedParsed != nil && itm.UpdatedParsed.After(latestKown) {
+		keeper = true
+		if itm.UpdatedParsed.After(postTime) {
+			postTime = *itm.UpdatedParsed
+		}
 	}
 	return
 }
