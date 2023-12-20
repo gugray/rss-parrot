@@ -13,6 +13,8 @@ type Account struct {
 	Summary         string // "While I'm deeply sympathetic, the author should be discussing their issues with a therapist rather than spreading this on the internet."
 	SiteUrl         string // https://ludic.mataroa.blog/
 	FeedUrl         string // https://ludic.mataroa.blog/rss/
+	FeedLastUpdated time.Time
+	NextCheckDue    time.Time
 	PubKey          string
 	ProfileImageUrl string
 }

@@ -119,11 +119,8 @@ func registerHooks(lc fx.Lifecycle) {
 	)
 }
 
-func test(ff logic.IFeedFollower, kh logic.IKeyHandler) {
-	pub, priv, err := kh.MakeKeyPair()
-	_ = pub
-	_ = priv
-	_ = err
+func test(ff logic.IFeedFollower, repo dal.IRepo) {
+	_ = ff.GetAccountForFeed("https://mastodon.social/@zydeobor")
 	//_ = ff.GetAccountForFeed("https://www.translationtribulations.com/")
 	//_ = ff.GetAccountForFeed("https://www.todepond.com/feed/index.xml")
 	//_ = ff.GetAccountForFeed("https://soatok.blog/b/")

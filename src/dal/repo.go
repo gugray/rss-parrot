@@ -24,6 +24,9 @@ type IRepo interface {
 	GetPrivKey(user string) (string, error)
 	GetAccount(user string) (*Account, error)
 	GetPostCount(user string) (uint, error)
+	GetFeedLastUpdated(accountId int) (time.Time, error)
+	UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error
+	AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error)
 	GetFollowerCount(user string) (uint, error)
 	GetFollowers(user string) ([]*MastodonUserInfo, error)
 	AddFollower(user string, follower *MastodonUserInfo) error
@@ -145,15 +148,17 @@ func (repo *Repo) InitUpdateDb() {
 }
 
 func (repo *Repo) mustAddBuiltInUsers() {
+
 	idb := shared.IdBuilder{Host: repo.cfg.Host}
-	_, err := repo.AddAccountIfNotExist(&Account{
-		CreatedAt: repo.cfg.Birb.Published,
-		UserUrl:   idb.UserUrl(repo.cfg.Birb.User),
-		Handle:    repo.cfg.Birb.User,
-		PubKey:    repo.cfg.Birb.PubKey,
-	}, repo.cfg.Birb.PrivKey)
+
+	_, err := repo.db.Exec(`INSERT INTO accounts
+    	(created_at, user_url, handle, pubkey, privkey)
+		VALUES(?, ?, ?, ?, ?)`,
+		repo.cfg.Birb.Published, idb.UserUrl(repo.cfg.Birb.User),
+		repo.cfg.Birb.User, repo.cfg.Birb.PubKey, repo.cfg.Birb.PrivKey)
+
 	if err != nil {
-		repo.logger.Errorf("Failed to add built-in users: %v", err)
+		repo.logger.Errorf("Failed to add built-in user '%s': %v", repo.cfg.Birb.User, err)
 		panic(err)
 	}
 }
@@ -190,12 +195,13 @@ func (repo *Repo) DoesAccountExist(user string) (bool, error) {
 
 func (repo *Repo) GetAccount(user string) (*Account, error) {
 	row := repo.db.QueryRow(
-		`SELECT created_at, user_url, handle, name, summary, profile_image_url, rss_url, pubkey
+		`SELECT id, created_at, user_url, handle, name, summary, profile_image_url, rss_url,
+         		feed_last_updated, next_check_due, pubkey
 		FROM accounts WHERE handle=?`, user)
 	var err error
 	var res Account
-	err = row.Scan(&res.CreatedAt, &res.UserUrl, &res.Handle, &res.Name, &res.Summary, &res.ProfileImageUrl,
-		&res.FeedUrl, &res.PubKey)
+	err = row.Scan(&res.Id, &res.CreatedAt, &res.UserUrl, &res.Handle, &res.Name, &res.Summary,
+		&res.ProfileImageUrl, &res.FeedUrl, &res.FeedLastUpdated, &res.NextCheckDue, &res.PubKey)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -293,4 +299,45 @@ func (repo *Repo) RemoveFollower(user, followerUserUrl string) error {
 		return err
 	}
 	return nil
+}
+
+func (repo *Repo) GetFeedLastUpdated(accountId int) (res time.Time, err error) {
+	res = time.Time{}
+	err = nil
+	row := repo.db.QueryRow("SELECT feed_last_updated FROM accounts WHERE id=?", accountId)
+	if err = row.Scan(&res); err != nil {
+		return
+	}
+	return
+}
+
+func (repo *Repo) UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error {
+	_, err := repo.db.Exec(`UPDATE accounts SET feed_last_updated=?, next_check_due=?
+        WHERE id=?`, lastUpdated, nextCheckDue, accountId)
+	return err
+}
+
+func (repo *Repo) AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error) {
+
+	err = nil
+
+	_, err = repo.db.Exec(`INSERT INTO feed_posts
+    	(account_id, post_guid_hash, post_time, link, title, description)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		accountId, post.PostGuidHash, post.PostTime, post.Link, post.Title, post.Desription)
+
+	if err == nil {
+		isNew = true
+		return
+	}
+
+	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+		if mysqlErr.Number == 1062 { // Duplicate key: account with this handle already exists
+			isNew = false
+			err = nil
+			return
+		}
+	}
+
+	return
 }
