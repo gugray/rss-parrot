@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -10,6 +11,7 @@ import (
 
 type IKeyHandler interface {
 	GetPrivKey(user string) (*rsa.PrivateKey, error)
+	MakeKeyPair() (pubKey, privKey string, err error)
 }
 
 type keyHandler struct {
@@ -53,4 +55,43 @@ func (kh *keyHandler) GetPrivKey(user string) (*rsa.PrivateKey, error) {
 		return nil, err
 	}
 	return privkey, nil
+}
+
+func (kh *keyHandler) MakeKeyPair() (pubKey, privKey string, err error) {
+
+	pubKey = ""
+	privKey = ""
+	err = nil
+
+	// Generate RSA key
+	var key *rsa.PrivateKey
+	key, err = rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return
+	}
+	// Extract public component.
+	pub := key.Public()
+
+	// Encode private key to PKCS#1, with password
+	keyRaw := x509.MarshalPKCS1PrivateKey(key)
+	encBlock, err := x509.EncryptPEMBlock(
+		rand.Reader, "RSA PRIVATE KEY", keyRaw,
+		[]byte(kh.cfg.Secrets.BirdPrivKeyPass), x509.PEMCipherAES256)
+	if err != nil {
+		return
+	}
+	keyPEM := pem.EncodeToMemory(encBlock)
+
+	// Encode public key to PKCS#1
+	pubPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "RSA PUBLIC KEY",
+			Bytes: x509.MarshalPKCS1PublicKey(pub.(*rsa.PublicKey)),
+		},
+	)
+
+	pubKey = string(pubPEM)
+	privKey = string(keyPEM)
+
+	return
 }

@@ -1,157 +1,226 @@
 package logic
 
 import (
-	"html"
-	"io"
+	"github.com/PuerkitoBio/goquery"
+	"github.com/mmcdole/gofeed"
 	"net/http"
 	"net/url"
-	"regexp"
+	"rss_parrot/dal"
 	"rss_parrot/shared"
+	"rss_parrot/texts"
 	"strings"
+	"time"
 )
 
 type IFeedFollower interface {
-	GetSiteInfo(siteUrl string) *SiteInfo
+	GetAccountForFeed(urlStr string) *dal.Account
 }
 
 type SiteInfo struct {
-	Url         string
-	FeedUrl     string
-	Title       string
-	Description string
+	Url          string
+	ParrotHandle string
+	FeedUrl      string
+	LastUpdated  time.Time
+	Title        string
+	Description  string
 }
 
 type feedFollower struct {
-	cfg               *shared.Config
-	logger            shared.ILogger
-	reTitle           regexp.Regexp
-	reDesciptionTag   regexp.Regexp
-	reDesriptionValue regexp.Regexp
-	reFeedTag         regexp.Regexp
-	reFeedValue       regexp.Regexp
+	cfg        *shared.Config
+	logger     shared.ILogger
+	repo       dal.IRepo
+	txt        texts.ITexts
+	keyHandler IKeyHandler
 }
 
-func NewFeedFollower(cfg *shared.Config, logger shared.ILogger) IFeedFollower {
+func NewFeedFollower(
+	cfg *shared.Config,
+	logger shared.ILogger,
+	repo dal.IRepo,
+	txt texts.ITexts,
+	keyHandler IKeyHandler,
+) IFeedFollower {
 	return &feedFollower{
-		cfg:               cfg,
-		logger:            logger,
-		reTitle:           *regexp.MustCompile(`<title>([^<]+)</title>`),
-		reDesciptionTag:   *regexp.MustCompile(`<meta [^>]*name.?=.?['"]?description['"]?[^>]*>`),
-		reDesriptionValue: *regexp.MustCompile(`content=("([^"]+)"|'([^']+)')`),
-		reFeedTag:         *regexp.MustCompile(`<link [^>]*type=["']?application/(rss|atom)\+xml["']?[^>]*>`),
-		reFeedValue:       *regexp.MustCompile(`href=('([^']+)'|"([^"]+)")`),
+		cfg:        cfg,
+		logger:     logger,
+		repo:       repo,
+		txt:        txt,
+		keyHandler: keyHandler,
 	}
 }
 
-func (ff *feedFollower) getSite(url string) *[]byte {
-	var err error
-	client := &http.Client{}
-	var req *http.Request
-	if req, err = http.NewRequest("GET", url, nil); err != nil {
-		ff.logger.Infof("Failed to create GET request: %v: %s", err, url)
-		return nil
+func (ff *feedFollower) getFeedUrl(siteUrl *url.URL, doc *goquery.Document) string {
+	var feedUrlStr string
+	isFeedRss := false
+	doc.Find("link[rel='alternate']").Each(func(_ int, s *goquery.Selection) {
+		var aType, aHref string
+		var ok bool
+		if aType, ok = s.Attr("type"); !ok {
+			return
+		}
+		if aHref, ok = s.Attr("href"); !ok {
+			return
+		}
+		if aType == "application/atom+xml" && !isFeedRss && feedUrlStr == "" {
+			feedUrlStr = aHref
+		}
+		if aType == "application/rss+xml" && (feedUrlStr == "" || !isFeedRss) {
+			feedUrlStr = aHref
+			isFeedRss = true
+		}
+	})
+	// Make it absolute
+	feedUrl, err := url.Parse(feedUrlStr)
+	if err != nil {
+		return ""
 	}
-	var resp *http.Response
-	if resp, err = client.Do(req); err != nil {
-		ff.logger.Infof("Failed to GET site: %v: %s", err, url)
-		return nil
+	if !feedUrl.IsAbs() {
+		feedUrl = siteUrl.ResolveReference(feedUrl)
 	}
-	if resp.StatusCode != http.StatusOK {
-		ff.logger.Infof("Failed to GET site: status %d: %s", resp.StatusCode, url)
-		return nil
-	}
-	defer resp.Body.Close()
-	var bodyBytes []byte
-	if bodyBytes, err = io.ReadAll(resp.Body); err != nil {
-		ff.logger.Infof("Failed to read response: %v: %s", err, url)
-		return nil
-	}
-	return &bodyBytes
-}
-
-func (ff *feedFollower) getFeedUrl(body string, siteUrl *url.URL) string {
-	feedTags := ff.reFeedTag.FindAllString(body, -1)
-	res := ""
-	resIsRss := false
-	for _, feedTag := range feedTags {
-		// Some links we find are not even the feeds we want
-		// <link rel="service.post" type="application/atom+xml" title="..." />
-		if !strings.Contains(feedTag, "alternate") {
-			continue
-		}
-		// If there are multiple feeds, we want the RSS one
-		isRss := strings.Contains(feedTag, "rss+xml")
-		if res != "" && resIsRss && !isRss {
-			continue
-		}
-		// Get the href value
-		groups := ff.reFeedValue.FindStringSubmatch(feedTag)
-		if groups == nil {
-			continue
-		}
-		feedUrlStr := groups[2]
-		if feedUrlStr == "" {
-			feedUrlStr = groups[3]
-		}
-		// Make it absolute
-		feedUrl, err := url.Parse(feedUrlStr)
-		if err != nil {
-			continue
-		}
-		if !feedUrl.IsAbs() {
-			feedUrl = siteUrl.ResolveReference(feedUrl)
-		}
-		// It's a keeper
-		res = feedUrl.String()
-		res = strings.TrimRight(res, "/")
-		resIsRss = isRss
-
-	}
+	// It's a keeper
+	res := feedUrl.String()
+	res = strings.TrimRight(res, "/")
 	return res
 }
 
-func (ff *feedFollower) extractSiteInfo(siteUrlStr, body string) *SiteInfo {
+func (ff *feedFollower) getMetas(siteUrl *url.URL, doc *goquery.Document, si *SiteInfo) {
+	s := doc.Find("title").First()
+	if s.Length() != 0 {
+		si.Title = s.Text()
+	}
+	s = doc.Find("meta[name='description']").First()
+	if s.Length() != 0 {
+		si.Description = s.AttrOr("content", "")
+	}
+}
 
+func getLastUpdated(feed *gofeed.Feed) time.Time {
+	var t time.Time
+	if feed.PublishedParsed != nil {
+		t = *feed.PublishedParsed
+	}
+	if feed.UpdatedParsed != nil && feed.UpdatedParsed.After(t) {
+		t = *feed.UpdatedParsed
+	}
+	for _, itm := range feed.Items {
+		if itm.PublishedParsed != nil && itm.PublishedParsed.After(t) {
+			t = *itm.PublishedParsed
+		}
+		if itm.UpdatedParsed != nil && itm.UpdatedParsed.After(t) {
+			t = *itm.UpdatedParsed
+		}
+	}
+	return t
+}
+
+func (ff *feedFollower) getSiteInfo(urlStr string) *SiteInfo {
+
+	urlStr = strings.TrimRight(urlStr, "/")
 	var res SiteInfo
+	var err error
 
-	siteUrlStr = strings.TrimRight(siteUrlStr, "/")
-	res.Url = siteUrlStr
+	// First, let's see if this is the feed itself
+	fp := gofeed.NewParser()
+	var feed *gofeed.Feed
+	feed, err = fp.ParseURL(urlStr)
+	if err == nil {
+		res.FeedUrl = urlStr
+		res.LastUpdated = getLastUpdated(feed)
+		res.Title = feed.Title
+		res.Description = feed.Description
+		res.Url = feed.Link
+		res.ParrotHandle = shared.GetHandleFromUrl(res.Url)
+		return &res
+	}
 
-	siteUrl, err := url.Parse(siteUrlStr)
+	// Normalize URL
+	siteUrl, err := url.Parse(urlStr)
 	if err != nil {
 		return nil
 	}
-	res.FeedUrl = ff.getFeedUrl(body, siteUrl)
-	if res.FeedUrl == "" {
+	res.Url = urlStr
+	res.ParrotHandle = shared.GetHandleFromUrl(res.Url)
+
+	// Get the page
+	resp, err := http.Get(urlStr)
+	if err != nil {
+		ff.logger.Warnf("Failed to get %s: %v", siteUrl, err)
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		ff.logger.Warnf("Failed to get %s: status %d", siteUrl, resp.StatusCode)
 		return nil
 	}
 
-	groups := ff.reTitle.FindStringSubmatch(body)
-	if groups != nil {
-		res.Title = groups[1]
+	// Load the HTML document
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		ff.logger.Warnf("Failed to parse HTML from %s: %v", siteUrl, err)
+		return nil
 	}
-	descrTag := ff.reDesciptionTag.FindString(body)
-	groups = ff.reDesriptionValue.FindStringSubmatch(descrTag)
-	if groups != nil {
-		res.Description = groups[2]
-		if res.Description == "" {
-			res.Description = groups[3]
-		}
+
+	// Pick out the data we're interested in
+	res.FeedUrl = ff.getFeedUrl(siteUrl, doc)
+	if res.FeedUrl == "" {
+		ff.logger.Warnf("No feed URL found: %s", siteUrl)
+		return nil
 	}
-	res.Title = html.UnescapeString(res.Title)
-	res.Description = html.UnescapeString(res.Description)
+	ff.getMetas(siteUrl, doc, &res)
+
+	// Get the feed to make sure it's there, and know when it's last changed
+	feed, err = fp.ParseURL(res.FeedUrl)
+	if err != nil {
+		ff.logger.Warnf("Failed to retrieve and parse feed: %s, %v", res.FeedUrl, err)
+		return nil
+	}
+	res.LastUpdated = getLastUpdated(feed)
 
 	return &res
-}
-
-func (ff *feedFollower) GetSiteInfo(siteUrl string) *SiteInfo {
-	bodyBytes := ff.getSite(siteUrl)
-	if bodyBytes == nil {
-		return nil
-	}
-	body := string(*bodyBytes)
-	return ff.extractSiteInfo(siteUrl, body)
 
 	// TODO: Do we already follow this feed?
 	// TODO: Retrieve feed to check it's there!
+}
+
+func (ff *feedFollower) GetAccountForFeed(urlStr string) *dal.Account {
+
+	ff.logger.Infof("Retrieving site information: %s", urlStr)
+
+	var err error
+
+	si := ff.getSiteInfo(urlStr)
+	if si == nil {
+		return nil
+	}
+
+	idb := shared.IdBuilder{ff.cfg.Host}
+
+	var pubKey string
+	var privKey string
+	pubKey, privKey, err = ff.keyHandler.MakeKeyPair()
+	if err != nil {
+		ff.logger.Errorf("Failed to create key pair: %v", err)
+		return nil
+	}
+
+	isNew, err := ff.repo.AddAccountIfNotExist(&dal.Account{
+		CreatedAt: time.Now(),
+		Handle:    si.ParrotHandle,
+		UserUrl:   idb.UserUrl(si.ParrotHandle),
+		Name:      shared.GetNameWithParrot(si.Title),
+		Summary:   ff.txt.WithVals("acct_bio.html", map[string]string{"description": si.Description}),
+		SiteUrl:   si.Url,
+		FeedUrl:   si.FeedUrl,
+		PubKey:    pubKey,
+	}, privKey)
+
+	ff.logger.Infof("Account is %s; newly created: %v", si.ParrotHandle, isNew)
+
+	var res *dal.Account
+	res, err = ff.repo.GetAccount(si.ParrotHandle)
+	if err != nil {
+		ff.logger.Errorf("Failed to load account for %s; was newly created: %v", si.ParrotHandle, isNew)
+		return nil
+	}
+	return res
 }

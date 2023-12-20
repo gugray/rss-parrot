@@ -8,7 +8,7 @@ import (
 )
 
 type IMessenger interface {
-	SendMessage(byUser string, toInbox, msg string, mention *MsgMention, to, cc []string, inReplyTo string)
+	SendMessage(byUser string, toInbox, msg string, mentions []*MsgMention, to, cc []string, inReplyTo string)
 	Broadcast(user string, published, message string) error
 }
 
@@ -44,14 +44,18 @@ func NewMessenger(
 }
 
 func (m *messenger) SendMessage(byUser string, toInbox, msg string,
-	mention *MsgMention, to, cc []string, inReplyTo string,
+	mentions []*MsgMention, to, cc []string, inReplyTo string,
 ) {
 	published := time.Now().UTC().Format(time.RFC3339)
-	var tag *[]dto.Tag
-	if mention != nil {
-		tag = &[]dto.Tag{{Type: "Mention", Href: mention.UserUrl, Name: mention.Moniker}}
+	var tags []dto.Tag
+	for _, mention := range mentions {
+		tags = append(tags, dto.Tag{Type: "Mention", Href: mention.UserUrl, Name: mention.Moniker})
 	}
-	err := m.sendToInbox(byUser, to, cc, toInbox, &inReplyTo, published, msg, tag)
+	var ptags *[]dto.Tag = nil
+	if len(tags) != 0 {
+		ptags = &tags
+	}
+	err := m.sendToInbox(byUser, to, cc, toInbox, &inReplyTo, published, msg, ptags)
 	if err != nil {
 		m.logger.Errorf("Failed to send message to inbox %s", toInbox)
 	}

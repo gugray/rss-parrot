@@ -19,14 +19,11 @@ var scripts embed.FS
 type IRepo interface {
 	InitUpdateDb()
 	GetNextId() uint64
-	AddAccount(account *Account) error
+	AddAccountIfNotExist(account *Account, privKey string) (isNew bool, err error)
 	DoesAccountExist(user string) (bool, error)
 	GetPrivKey(user string) (string, error)
-	SetPrivKey(user, privKey string) error
 	GetAccount(user string) (*Account, error)
 	GetPostCount(user string) (uint, error)
-	GetPosts(user string) ([]*Post, error)
-	AddPost(post *Post) error
 	GetFollowerCount(user string) (uint, error)
 	GetFollowers(user string) ([]*MastodonUserInfo, error)
 	AddFollower(user string, follower *MastodonUserInfo) error
@@ -34,13 +31,11 @@ type IRepo interface {
 }
 
 type Repo struct {
-	cfg       *shared.Config
-	logger    shared.ILogger
-	db        *sql.DB
-	posts     []*Post
-	followers []*MastodonUserInfo
-	muId      sync.Mutex
-	nextId    uint64
+	cfg    *shared.Config
+	logger shared.ILogger
+	db     *sql.DB
+	muId   sync.Mutex
+	nextId uint64
 }
 
 func NewRepo(cfg *shared.Config, logger shared.ILogger) IRepo {
@@ -73,7 +68,22 @@ func NewRepo(cfg *shared.Config, logger shared.ILogger) IRepo {
 		nextId: uint64(time.Now().UnixNano()),
 	}
 
+	// DBG
+	//repo.test()
+
 	return &repo
+}
+
+func (repo *Repo) test() {
+	//_, err := repo.db.Exec(`INSERT INTO accounts
+	//	(created_at, user_url, handle, name, summary, profile_image_url, site_url, rss_url, pubkey)
+	//	VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	//	time.Now(), "user-url", "handle", "name", "summary", "profile-pic",
+	//	"site-url", "rss-url", "pub-key")
+	//if err != nil {
+	//	repo.logger.Errorf("%v", err)
+	//}
+	//repo.logger.Info("test")
 }
 
 func (repo *Repo) GetNextId() uint64 {
@@ -136,27 +146,36 @@ func (repo *Repo) InitUpdateDb() {
 
 func (repo *Repo) mustAddBuiltInUsers() {
 	idb := shared.IdBuilder{Host: repo.cfg.Host}
-	err := repo.AddAccount(&Account{
+	_, err := repo.AddAccountIfNotExist(&Account{
 		CreatedAt: repo.cfg.Birb.Published,
 		UserUrl:   idb.UserUrl(repo.cfg.Birb.User),
 		Handle:    repo.cfg.Birb.User,
-	})
+		PubKey:    repo.cfg.Birb.PubKey,
+	}, repo.cfg.Birb.PrivKey)
 	if err != nil {
 		repo.logger.Errorf("Failed to add built-in users: %v", err)
 		panic(err)
 	}
 }
 
-func (repo *Repo) AddAccount(acct *Account) error {
-	_, err := repo.db.Exec(`INSERT INTO accounts
-    	(created_at, user_url, handle, name, summary, profile_image_url, site_url, rss_url, pubkey)
+func (repo *Repo) AddAccountIfNotExist(acct *Account, privKey string) (isNew bool, err error) {
+	isNew = true
+	_, err = repo.db.Exec(`INSERT INTO accounts
+    	(created_at, user_url, handle, name, summary, profile_image_url, site_url, rss_url, pubkey, privkey)
 		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		acct.CreatedAt, acct.UserUrl, acct.Handle, acct.Name, acct.Summary, acct.ProfileImageUrl,
-		acct.SiteUrl, acct.RssUrl, acct.PubKey)
-	if err != nil {
-		return err
+		acct.SiteUrl, acct.FeedUrl, acct.PubKey, privKey)
+	if err == nil {
+		return
 	}
-	return nil
+	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+		if mysqlErr.Number == 1062 { // Duplicate key: account with this handle already exists
+			isNew = false
+			_, err = repo.GetAccount(acct.Handle)
+			return
+		}
+	}
+	return
 }
 
 func (repo *Repo) DoesAccountExist(user string) (bool, error) {
@@ -176,7 +195,7 @@ func (repo *Repo) GetAccount(user string) (*Account, error) {
 	var err error
 	var res Account
 	err = row.Scan(&res.CreatedAt, &res.UserUrl, &res.Handle, &res.Name, &res.Summary, &res.ProfileImageUrl,
-		&res.RssUrl, &res.PubKey)
+		&res.FeedUrl, &res.PubKey)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -212,14 +231,6 @@ func (repo *Repo) SetPrivKey(user, privKey string) error {
 
 func (repo *Repo) GetPostCount(user string) (uint, error) {
 	return 734, nil
-}
-
-func (repo *Repo) GetPosts(user string) ([]*Post, error) {
-	return []*Post{}, nil
-}
-
-func (repo *Repo) AddPost(post *Post) error {
-	return nil
 }
 
 func (repo *Repo) GetFollowerCount(user string) (uint, error) {

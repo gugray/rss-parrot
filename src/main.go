@@ -26,12 +26,6 @@ var logger *log.Logger
 
 func main() {
 
-	//DBG
-	//r := regexp.MustCompile(`<link [^>]*type=["']?application/(rss|atom)\\+xml["']?[^>]*>`)
-	//r := regexp.MustCompile(`<link [^>]*type=["']?application/(rss|atom)\+xml`)
-	//s := r.FindString(`<link rel="alternate" type="application/rss+xml" title="RSS" href="/rss/">`)
-	//fmt.Println(s)
-
 	cfg := shared.LoadConfig()
 	provideConfig := func() *shared.Config {
 		return cfg
@@ -63,6 +57,7 @@ func main() {
 			asHandlerGroupDef(server.NewCmdHandlerGroup),
 		),
 		fx.Invoke(
+			test,
 			registerHooks,
 			func(repo dal.IRepo) { repo.InitUpdateDb() },
 			func(*http.Server) {},
@@ -122,4 +117,16 @@ func registerHooks(lc fx.Lifecycle) {
 			},
 		},
 	)
+}
+
+func test(ff logic.IFeedFollower, kh logic.IKeyHandler) {
+	pub, priv, err := kh.MakeKeyPair()
+	_ = pub
+	_ = priv
+	_ = err
+	//_ = ff.GetAccountForFeed("https://www.translationtribulations.com/")
+	//_ = ff.GetAccountForFeed("https://www.todepond.com/feed/index.xml")
+	//_ = ff.GetAccountForFeed("https://soatok.blog/b/")
+	//_ = ff.GetAccountForFeed("https://jvns.ca")
+	//_ = ff.GetAccountForFeed("https://magazine.sebastianraschka.com/")
 }

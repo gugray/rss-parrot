@@ -71,7 +71,7 @@ func (ib *inbox) HandleFollow(
 
 	// Is this a built-in account (ie not a feed parrot)?
 	// Those are not taking followers
-	if account.RssUrl == "" {
+	if account.FeedUrl == "" {
 		return "", nil
 	}
 
@@ -272,7 +272,7 @@ func (ib *inbox) HandleCreateNote(
 			"userUrl": senderInfo.Id,
 		})
 		go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
-			&MsgMention{moniker, act.Actor},
+			[]*MsgMention{{moniker, act.Actor}},
 			[]string{act.Actor}, []string{},
 			act.Object.Id)
 		return
@@ -287,7 +287,7 @@ func (ib *inbox) HandleCreateNote(
 			"userUrl": senderInfo.Id,
 		})
 		go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
-			&MsgMention{moniker, act.Actor},
+			[]*MsgMention{{moniker, act.Actor}},
 			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
 			act.Object.Id)
 		return
@@ -300,36 +300,38 @@ func (ib *inbox) HandleCreateNote(
 
 func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[dto.Note], moniker, blogUrl string) {
 
-	stInfo := ib.fdfol.GetSiteInfo(blogUrl)
+	acct := ib.fdfol.GetAccountForFeed(blogUrl)
 
-	if stInfo == nil {
-		ib.logger.Infof("Could not retrieve RSS feed for site: %s", blogUrl)
+	if acct == nil {
+		ib.logger.Infof("Could not create/retrieve account for site: %s", blogUrl)
 		msg := ib.txt.WithVals("reply_site_not_found.html", map[string]string{
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})
 		go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
-			&MsgMention{moniker, act.Actor},
+			[]*MsgMention{{moniker, act.Actor}},
 			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
 			act.Object.Id)
 		return
 	}
 
-	ib.logger.Infof("Feed for site retrieved: %s -> %s", blogUrl, stInfo.FeedUrl)
+	ib.logger.Infof("Account for site created/retrieved: %s -> %s", blogUrl, acct.Handle)
+	accountMoniker := shared.MakeFullMoniker(ib.cfg.Host, acct.Handle)
+	accountUrl := ib.idb.UserUrl(acct.Handle)
 	msg := ib.txt.WithVals("reply_got_feed.html", map[string]string{
-		"moniker":         moniker,
-		"userUrl":         senderInfo.Id,
-		"siteURL":         stInfo.Url,
-		"feedURL":         stInfo.FeedUrl,
-		"siteTitle":       stInfo.Title,
-		"siteDescription": stInfo.Description,
+		"userHandle":     senderInfo.PreferredUserName,
+		"userUrl":        senderInfo.Id,
+		"accountName":    acct.Name,
+		"accountMoniker": "@" + acct.Handle,
+		"accountUrl":     accountUrl,
 	})
 	go ib.messenger.SendMessage(ib.cfg.Birb.User, senderInfo.Inbox, msg,
-		&MsgMention{moniker, act.Actor},
+		[]*MsgMention{{moniker, act.Actor}, {accountMoniker, accountUrl}},
 		[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
 		act.Object.Id)
 
 	// @birb@rss-parrot.zydeo.net https://soatok.blog/b/
+	// @birb@rss-parrot.zydeo.net https://magazine.sebastianraschka.com/
 
 	// TODO
 	// Parse URL out of message

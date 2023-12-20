@@ -5,13 +5,14 @@ import (
 )
 
 type Account struct {
+	Id              int
 	CreatedAt       time.Time
 	UserUrl         string // https://rss-parrot.net/u/ludic.mataroa.blog
 	Handle          string // ludic.mataroa.blog
 	Name            string // Ludicity
 	Summary         string // "While I'm deeply sympathetic, the author should be discussing their issues with a therapist rather than spreading this on the internet."
 	SiteUrl         string // https://ludic.mataroa.blog/
-	RssUrl          string // https://ludic.mataroa.blog/rss/
+	FeedUrl         string // https://ludic.mataroa.blog/rss/
 	PubKey          string
 	ProfileImageUrl string
 }
@@ -21,10 +22,19 @@ type Mention struct {
 	UserInfo    *MastodonUserInfo
 }
 
-type Post struct {
-	StatusId  string
-	Content   string
-	Published time.Time
+type FeedPost struct {
+	PostGuidHash int
+	PostTime     time.Time
+	Link         string
+	Title        string
+	Desription   string
+}
+
+type Toot struct {
+	PostGuidHash int
+	TootedAt     time.Time
+	StatusId     string
+	Content      string
 }
 
 type MastodonUserInfo struct {

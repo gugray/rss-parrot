@@ -1,9 +1,11 @@
 package shared
 
 import (
+	"bytes"
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 const ActivityPublic = "https://www.w3.org/ns/activitystreams#Public"
@@ -20,6 +22,37 @@ func GetHostName(userUrl string) (string, error) {
 
 func MakeFullMoniker(hostName, handle string) string {
 	return "@" + handle + "@" + hostName
+}
+
+func GetNameWithParrot(name string) string {
+	return "🦜 " + name
+}
+
+func GetHandleFromUrl(url string) string {
+
+	url = strings.TrimPrefix(url, "http://")
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimRight(url, "/")
+
+	var buf bytes.Buffer
+	for i := 0; i < len(url); i++ {
+		c := url[i]
+		if c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '-' || c == '.' {
+			buf.WriteByte(c)
+		} else {
+			buf.WriteString("..")
+		}
+	}
+	res := buf.String()
+
+	for {
+		merged := strings.ReplaceAll(res, "...", "..")
+		if len(merged) == len(res) {
+			break
+		}
+		res = merged
+	}
+	return res
 }
 
 type IdBuilder struct {
