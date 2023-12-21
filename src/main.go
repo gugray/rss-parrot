@@ -120,7 +120,6 @@ func registerHooks(lc fx.Lifecycle) {
 }
 
 func test(ff logic.IFeedFollower, repo dal.IRepo) {
-	ff.DbgCheckFeed("mastodon.social..zydeobor")
 	//_ = ff.GetAccountForFeed("https://mastodon.social/@zydeobor")
 	//_ = ff.GetAccountForFeed("https://www.translationtribulations.com/")
 	//_ = ff.GetAccountForFeed("https://www.todepond.com/feed/index.xml")

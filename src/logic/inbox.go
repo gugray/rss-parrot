@@ -330,6 +330,7 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 		[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
 		act.Object.Id)
 
+	// @birb@rss-parrot.zydeo.net https://r4inee.wordpress.com
 	// @birb@rss-parrot.zydeo.net https://soatok.blog/b/
 	// @birb@rss-parrot.zydeo.net https://magazine.sebastianraschka.com/
 	// @birb@rss-parrot.zydeo.net https://mastodon.social/@zydeobor

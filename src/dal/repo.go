@@ -28,6 +28,7 @@ type IRepo interface {
 	GetFeedLastUpdated(accountId int) (time.Time, error)
 	UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error
 	AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error)
+	GetAccountToCheck(checkDue time.Time) (*Account, error)
 	GetFollowerCount(user string) (uint, error)
 	GetFollowersByUser(user string) ([]*MastodonUserInfo, error)
 	GetFollowersById(accountId int) ([]*MastodonUserInfo, error)
@@ -76,22 +77,7 @@ func NewRepo(cfg *shared.Config, logger shared.ILogger) IRepo {
 		nextId: uint64(time.Now().UnixNano()),
 	}
 
-	// DBG
-	//repo.test()
-
 	return &repo
-}
-
-func (repo *Repo) test() {
-	//_, err := repo.db.Exec(`INSERT INTO accounts
-	//	(created_at, user_url, handle, name, summary, profile_image_url, site_url, rss_url, pubkey)
-	//	VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-	//	time.Now(), "user-url", "handle", "name", "summary", "profile-pic",
-	//	"site-url", "rss-url", "pub-key")
-	//if err != nil {
-	//	repo.logger.Errorf("%v", err)
-	//}
-	//repo.logger.Info("test")
 }
 
 func (repo *Repo) GetNextId() uint64 {
@@ -171,7 +157,7 @@ func (repo *Repo) mustAddBuiltInUsers() {
 func (repo *Repo) AddAccountIfNotExist(acct *Account, privKey string) (isNew bool, err error) {
 	isNew = true
 	_, err = repo.db.Exec(`INSERT INTO accounts
-    	(created_at, user_url, handle, name, summary, profile_image_url, site_url, rss_url, pubkey, privkey)
+    	(created_at, user_url, handle, name, summary, profile_image_url, site_url, feed_url, pubkey, privkey)
 		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		acct.CreatedAt, acct.UserUrl, acct.Handle, acct.Name, acct.Summary, acct.ProfileImageUrl,
 		acct.SiteUrl, acct.FeedUrl, acct.PubKey, privKey)
@@ -200,13 +186,13 @@ func (repo *Repo) DoesAccountExist(user string) (bool, error) {
 
 func (repo *Repo) GetAccount(user string) (*Account, error) {
 	row := repo.db.QueryRow(
-		`SELECT id, created_at, user_url, handle, name, summary, profile_image_url, rss_url,
+		`SELECT id, created_at, user_url, handle, name, summary, profile_image_url, site_url, feed_url,
          		feed_last_updated, next_check_due, pubkey
 		FROM accounts WHERE handle=?`, user)
 	var err error
 	var res Account
 	err = row.Scan(&res.Id, &res.CreatedAt, &res.UserUrl, &res.Handle, &res.Name, &res.Summary,
-		&res.ProfileImageUrl, &res.FeedUrl, &res.FeedLastUpdated, &res.NextCheckDue, &res.PubKey)
+		&res.ProfileImageUrl, &res.SiteUrl, &res.FeedUrl, &res.FeedLastUpdated, &res.NextCheckDue, &res.PubKey)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -352,6 +338,28 @@ func (repo *Repo) UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDu
 	_, err := repo.db.Exec(`UPDATE accounts SET feed_last_updated=?, next_check_due=?
         WHERE id=?`, lastUpdated, nextCheckDue, accountId)
 	return err
+}
+
+func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, error) {
+	rows, err := repo.db.Query(`SELECT id, created_at, user_url, handle, name, summary, profile_image_url,
+    	site_url, feed_url, feed_last_updated, next_check_due, pubkey
+		FROM accounts WHERE next_check_due<? LIMIT 1`, checkDue)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var acct *Account = nil
+	for rows.Next() {
+		res := Account{}
+		err = rows.Scan(&res.Id, &res.CreatedAt, &res.UserUrl, &res.Handle, &res.Name, &res.Summary,
+			&res.ProfileImageUrl, &res.SiteUrl, &res.FeedUrl, &res.FeedLastUpdated, &res.NextCheckDue, &res.PubKey)
+		if err = rows.Err(); err != nil {
+			return nil, err
+		}
+		acct = &res
+	}
+	return acct, nil
+
 }
 
 func (repo *Repo) AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error) {

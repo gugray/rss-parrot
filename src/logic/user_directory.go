@@ -11,7 +11,7 @@ import (
 )
 
 const pageSize = 2
-const websiteLinkTemplate = "<a href='https://%s' target='_blank' rel='nofollow noopener noreferrer me' translate='no'><span class='invisible'>https://</span><span class=''>%s</span><span class='invisible'></span></a>"
+const websiteLinkTemplate = "<a href='%s' target='_blank' rel='nofollow noopener noreferrer me' translate='no'>%s</a>"
 
 // TODO: return error in all of these
 
@@ -76,6 +76,14 @@ func (udir *userDirectory) patchSpecialAccount(acct *dal.Account) bool {
 	return false
 }
 
+func (udir *userDirectory) getWebsiteAttachment(acct *dal.Account) string {
+	if acct.Handle == udir.cfg.Birb.User {
+		return fmt.Sprintf(websiteLinkTemplate, "https://"+udir.cfg.Host, udir.cfg.Host)
+	}
+	justUrl := strings.TrimPrefix(acct.SiteUrl, "https://")
+	return fmt.Sprintf(websiteLinkTemplate, acct.SiteUrl, justUrl)
+}
+
 func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 
 	user = strings.ToLower(user)
@@ -112,7 +120,7 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 			{
 				Type:  "PropertyValue",
 				Name:  "Website",
-				Value: fmt.Sprintf(websiteLinkTemplate, udir.cfg.Host, udir.cfg.Host),
+				Value: udir.getWebsiteAttachment(acct),
 			},
 		},
 		Icon: dto.Image{

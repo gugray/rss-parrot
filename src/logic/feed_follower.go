@@ -11,13 +11,15 @@ import (
 	"rss_parrot/dal"
 	"rss_parrot/shared"
 	"rss_parrot/texts"
+	"sort"
 	"strings"
 	"time"
 )
 
+const feedCheckLoopIdleWakeSec = 60
+
 type IFeedFollower interface {
 	GetAccountForFeed(urlStr string) *dal.Account
-	DbgCheckFeed(accountHandle string) error // TODO Remove
 }
 
 type SiteInfo struct {
@@ -46,7 +48,7 @@ func NewFeedFollower(
 	txt texts.ITexts,
 	keyHandler IKeyHandler,
 ) IFeedFollower {
-	return &feedFollower{
+	ff := feedFollower{
 		cfg:        cfg,
 		logger:     logger,
 		repo:       repo,
@@ -54,6 +56,8 @@ func NewFeedFollower(
 		txt:        txt,
 		keyHandler: keyHandler,
 	}
+	go ff.feedCheckLoop()
+	return &ff
 }
 
 func (ff *feedFollower) getFeedUrl(siteUrl *url.URL, doc *goquery.Document) string {
@@ -205,17 +209,11 @@ func (ff *feedFollower) updateAccountPosts(
 		return
 	}
 
-	newLastUpdated := lastKnownFeedUpdated
 	// Deal with feed items newer than our last seen
-	for _, itm := range feed.Items {
-		keeper, postTime := checkItemTime(itm, lastKnownFeedUpdated)
-		if !keeper {
-			continue
-		}
-		if postTime.After(newLastUpdated) {
-			newLastUpdated = postTime
-		}
-		if err = ff.storePostIfNew(accountId, accountHandle, postTime, itm, tootNew); err != nil {
+	// This goes from older to newer
+	keepers, newLastUpdated := getSortedPosts(feed.Items, lastKnownFeedUpdated)
+	for _, k := range keepers {
+		if err = ff.storePostIfNew(accountId, accountHandle, k.postTime, k.itm, tootNew); err != nil {
 			return
 		}
 	}
@@ -225,6 +223,33 @@ func (ff *feedFollower) updateAccountPosts(
 		return
 	}
 	return
+}
+
+type sortedPost struct {
+	itm      *gofeed.Item
+	postTime time.Time
+}
+
+func getSortedPosts(items []*gofeed.Item, lastKnownFeedUpdated time.Time) ([]sortedPost, time.Time) {
+	var keepers []sortedPost
+	newLastUpdated := lastKnownFeedUpdated
+
+	for _, itm := range items {
+		keeper, postTime := checkItemTime(itm, lastKnownFeedUpdated)
+		if !keeper {
+			continue
+		}
+		if postTime.After(newLastUpdated) {
+			newLastUpdated = postTime
+		}
+		keepers = append(keepers, sortedPost{itm, postTime})
+	}
+
+	sort.Slice(keepers, func(i, j int) bool {
+		return keepers[i].postTime.Before(keepers[j].postTime)
+	})
+
+	return keepers, newLastUpdated
 }
 
 func checkItemTime(itm *gofeed.Item, latestKown time.Time) (keeper bool, postTime time.Time) {
@@ -244,10 +269,25 @@ func checkItemTime(itm *gofeed.Item, latestKown time.Time) (keeper bool, postTim
 }
 
 func (ff *feedFollower) getNextCheckTime(lastChanged time.Time) time.Time {
-	res := time.Now()
-	// TODO: check less active feeds less frequently
-	hours := 6.0 * (0.8 + 0.4*rand.Float64()) // 0.8 - 1.2 random band around targeted value
-	res = res.Add(time.Duration(float64(time.Hour) * hours))
+
+	// Active in the last day: 1 hour
+	// Active in the last week: 3 hours
+	// Active in the last 4 weeks: 6 hours
+	// Inactive for over 4 weeks: 12 hours
+	var hours float64 = 1
+	idleFor := time.Now().Sub(lastChanged)
+	if idleFor.Hours() > 24 {
+		hours = 3
+	}
+	if idleFor.Hours() > 168 {
+		hours = 6
+	}
+	if idleFor.Hours() > 168*4 {
+		hours = 12
+	}
+
+	hours = hours * (0.8 + 0.4*rand.Float64()) // 0.8 - 1.2 random band around targeted value
+	res := time.Now().Add(time.Duration(float64(time.Hour) * hours))
 	return res
 }
 
@@ -365,7 +405,7 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) *dal.Account {
 		return nil
 	}
 
-	err = ff.updateAccountPosts(acct.Id, si.ParrotHandle, feed, false)
+	err = ff.updateAccountPosts(acct.Id, si.ParrotHandle, feed, !isNew)
 	if err != nil {
 		ff.logger.Errorf("Failed to update account's posts: %s: %v", acct.Handle, err)
 		return nil
@@ -374,14 +414,10 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) *dal.Account {
 	return acct
 }
 
-func (ff *feedFollower) DbgCheckFeed(accountHandle string) error {
+func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 
 	var err error
-	var acct *dal.Account
-
-	if acct, err = ff.repo.GetAccount(accountHandle); err != nil {
-		return err
-	}
+	ff.logger.Infof("Updating account %s: %s", acct.Handle, acct.FeedUrl)
 
 	fp := gofeed.NewParser()
 	var feed *gofeed.Feed
@@ -394,4 +430,32 @@ func (ff *feedFollower) DbgCheckFeed(accountHandle string) error {
 	}
 
 	return nil
+}
+
+func (ff *feedFollower) feedCheckLoop() {
+	for {
+		var err error
+		var acct *dal.Account
+		if acct, err = ff.repo.GetAccountToCheck(time.Now()); err != nil {
+			ff.logger.Errorf("Failed to get next feed due for checking: %v", err)
+			time.Sleep(feedCheckLoopIdleWakeSec * time.Second)
+			continue
+		}
+		if acct == nil {
+			ff.logger.Debugf("No feeds to check; sleeping %d seconds", feedCheckLoopIdleWakeSec)
+			time.Sleep(feedCheckLoopIdleWakeSec * time.Second)
+			continue
+		}
+		lastUpdated := acct.FeedLastUpdated
+		err = ff.updateFeed(acct)
+		if err != nil {
+			ff.logger.Errorf("Error updating feed: %s: %v", acct.Handle, err)
+			// Reschedule for updating as if there was no new post
+			nextCheckDue := ff.getNextCheckTime(lastUpdated)
+			if err = ff.repo.UpdateAccountFeedTimes(acct.Id, lastUpdated, nextCheckDue); err != nil {
+				ff.logger.Errorf("Failed to reschedule for checking after error: %s: %v", acct.Handle, err)
+			}
+		}
+		// If no error, updateFeed has set next due date for checking
+	}
 }

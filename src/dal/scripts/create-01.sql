@@ -19,14 +19,15 @@ CREATE TABLE accounts
     summary           TEXT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'     NOT NULL DEFAULT (''),
     profile_image_url TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'         NOT NULL DEFAULT (''),
     site_url          TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'         NOT NULL DEFAULT (''),
-    rss_url           TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'         NOT NULL DEFAULT (''),
+    feed_url          TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'         NOT NULL DEFAULT (''),
     feed_last_updated DATETIME                                                      NOT NULL DEFAULT '1900-01-01 00:00:00',
-    next_check_due    DATETIME                                                      NOT NULL DEFAULT '1900-01-01 00:00:00',
+    next_check_due    DATETIME                                                      NOT NULL DEFAULT '2100-01-01 00:00:00',
     pubkey            TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'         NOT NULL,
     privkey           TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'         NOT NULL DEFAULT (''),
     PRIMARY KEY (id),
-    UNIQUE INDEX (id ASC),
-    UNIQUE INDEX (handle ASC)
+    UNIQUE INDEX (id),
+    UNIQUE INDEX (handle),
+    INDEX (next_check_due)
 );
 
 CREATE TABLE followers
@@ -36,8 +37,8 @@ CREATE TABLE followers
     handle       TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'         NOT NULL,
     host         TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'         NOT NULL,
     shared_inbox TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'         NOT NULL,
-    INDEX (user_url ASC),
-    INDEX (account_id ASC),
+    INDEX (user_url),
+    INDEX (account_id),
     CONSTRAINT FOREIGN KEY (account_id) REFERENCES accounts (id)
 );
 
@@ -49,7 +50,7 @@ CREATE TABLE feed_posts
     link           TEXT CHARACTER SET 'ascii' COLLATE 'ascii_general_ci'     NOT NULL,
     title          TEXT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci' NOT NULL,
     description    TEXT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci' NOT NULL,
-    UNIQUE INDEX (account_id, post_guid_hash ASC),
+    UNIQUE INDEX (account_id, post_guid_hash),
     CONSTRAINT FOREIGN KEY (account_id) REFERENCES accounts (id)
 );
 
