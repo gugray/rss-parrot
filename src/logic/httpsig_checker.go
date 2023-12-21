@@ -39,8 +39,7 @@ func (chk *httpSigChecker) Check(w http.ResponseWriter, r *http.Request) (*dto.U
 
 	var userInfo *dto.UserInfo
 	if userInfo, err = chk.userRetriever.Retrieve(keyId); err != nil {
-		chk.logger.Infof("Failed to retrieve user info for keyId %s: %v", keyId, err)
-		return nil, fmt.Sprintf("Failed to retrieve user info for keyId: %s", keyId), nil
+		return nil, fmt.Sprintf("Failed to retrieve user info for keyId: %s: %v", keyId, err), nil
 	}
 
 	verifier, err := httpsig.NewVerifier(r)
@@ -54,13 +53,11 @@ func (chk *httpSigChecker) Check(w http.ResponseWriter, r *http.Request) (*dto.U
 
 	var pubKey interface{}
 	if pubKey, err = x509.ParsePKIXPublicKey(block.Bytes); err != nil {
-		chk.logger.Warnf("Failed to parse sender's public key: %v", err)
-		return nil, "Failed to parse sender's public key", nil
+		return nil, fmt.Sprintf("Failed to parse sender's public key: %v", err), nil
 	}
 
 	if err = verifier.Verify(pubKey, httpsig.RSA_SHA256); err != nil {
-		chk.logger.Warnf("Incorrect signature: %v", err)
-		return nil, "Incorrect signature", nil
+		return nil, fmt.Sprintf("Incorrect signature: %v", err), nil
 	}
 
 	return userInfo, "", nil

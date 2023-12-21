@@ -169,9 +169,14 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sigProblem != "" {
-		hg.logger.Warnf("Incorrectly signed inbox POST request: %s", sigProblem)
-		msg := fmt.Sprintf("Invalid HTTP signature: %s", sigProblem)
-		writeErrorResponse(w, msg, http.StatusUnauthorized)
+		if act.Type == "Delete" {
+			hg.logger.Infof("Ignoring Delete request with unverified actor signature")
+			writeJsonResponse(hg.logger, w, "OK")
+		} else {
+			hg.logger.Warnf("Incorrectly signed inbox POST request: %s", sigProblem)
+			msg := fmt.Sprintf("Invalid HTTP signature: %s", sigProblem)
+			writeErrorResponse(w, msg, http.StatusUnauthorized)
+		}
 		return
 	}
 

@@ -144,7 +144,7 @@ func (m *messenger) tootQueueLoop() {
 			m.logger.Debug("New toots in queue")
 			sendToots()
 		case <-time.After(tootLoopIdleWakeSec * time.Second):
-			m.logger.Debug("Periodic wakie")
+			m.logger.Debug("Toot queue idle loop")
 			sendToots()
 		case id := <-tootSent:
 			m.logger.Debugf("Toot sent: %d", id)
