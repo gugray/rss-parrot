@@ -380,12 +380,16 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) *dal.Account {
 		return nil
 	}
 
+	summary := ff.txt.WithVals("acct_bio.html", map[string]string{
+		"description": si.Description,
+		"siteUrl":     idb.SiteUrl(),
+	})
 	isNew, err := ff.repo.AddAccountIfNotExist(&dal.Account{
 		CreatedAt: time.Now(),
 		Handle:    si.ParrotHandle,
 		UserUrl:   idb.UserUrl(si.ParrotHandle),
 		Name:      shared.GetNameWithParrot(si.Title),
-		Summary:   ff.txt.WithVals("acct_bio.html", map[string]string{"description": si.Description}),
+		Summary:   summary,
 		SiteUrl:   si.Url,
 		FeedUrl:   si.FeedUrl,
 		PubKey:    pubKey,

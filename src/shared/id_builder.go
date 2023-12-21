@@ -59,6 +59,10 @@ type IdBuilder struct {
 	Host string
 }
 
+func (idb *IdBuilder) SiteUrl() string {
+	return fmt.Sprintf("https://%s", idb.Host)
+}
+
 func (idb *IdBuilder) SharedInbox() string {
 	return fmt.Sprintf("https://%s/inbox", idb.Host)
 }

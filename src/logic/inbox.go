@@ -71,9 +71,9 @@ func (ib *inbox) HandleFollow(
 
 	// Is this a built-in account (ie not a feed parrot)?
 	// Those are not taking followers
-	if account.FeedUrl == "" {
-		return "", nil
-	}
+	//if account.FeedUrl == "" {
+	//	return "", nil
+	//}
 
 	var actFollow dto.ActivityIn[string]
 	if jsonErr := json.Unmarshal(bodyBytes, &actFollow); jsonErr != nil {
