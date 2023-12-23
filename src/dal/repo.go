@@ -5,7 +5,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
+	"github.com/mattn/go-sqlite3"
 	"rss_parrot/shared"
 	"sync"
 	"time"
@@ -49,24 +49,12 @@ type Repo struct {
 
 func NewRepo(cfg *shared.Config, logger shared.ILogger) IRepo {
 
-	// Connect to DB
-	sqlCfg := mysql.Config{
-		User:            cfg.Secrets.DbUser,
-		Passwd:          cfg.Secrets.DbPass,
-		Net:             cfg.Db.Net,
-		Addr:            cfg.Db.Addr,
-		DBName:          cfg.Db.DbName,
-		MultiStatements: true,
-		ParseTime:       true,
-	}
 	var err error
 	var db *sql.DB
-	if db, err = sql.Open("mysql", sqlCfg.FormatDSN()); err != nil {
-		logger.Errorf("Failed to connect to DB: %v", err)
-		panic(err)
-	}
-	if err = db.Ping(); err != nil {
-		logger.Errorf("Failed to ping DB: %v", err)
+
+	db, err = sql.Open("sqlite3", fmt.Sprintf("file:%s??cache=shared&mode=rwc", cfg.DbFile))
+	if err != nil {
+		logger.Errorf("Failed to open/create DB file: %s: %v", cfg.DbFile, err)
 		panic(err)
 	}
 
@@ -94,7 +82,9 @@ func (repo *Repo) InitUpdateDb() {
 	sysParamsExists := false
 	var err error
 	var rows *sql.Rows
-	if rows, err = repo.db.Query("SHOW TABLES LIKE 'sys_params'"); err != nil {
+
+	rows, err = repo.db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='sys_params'")
+	if err != nil {
 		repo.logger.Errorf("Failed to check if 'sys_params' table exists: %v", err)
 		panic(err)
 	}
@@ -136,6 +126,10 @@ func (repo *Repo) InitUpdateDb() {
 	if dbVer == 0 {
 		repo.mustAddBuiltInUsers()
 	}
+
+	// DBG
+	_, _ = repo.AddAccountIfNotExist(&Account{Handle: "handle"}, "xyz")
+	_, _ = repo.AddAccountIfNotExist(&Account{Handle: "handle"}, "xyz")
 }
 
 func (repo *Repo) mustAddBuiltInUsers() {
@@ -164,8 +158,10 @@ func (repo *Repo) AddAccountIfNotExist(acct *Account, privKey string) (isNew boo
 	if err == nil {
 		return
 	}
-	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-		if mysqlErr.Number == 1062 { // Duplicate key: account with this handle already exists
+	// MySQL: mysql.MySQLError; mysqlErr.Number == 1062
+	if sqliteErr, ok := err.(sqlite3.Error); ok {
+		// Duplicate key: account with this handle already exists
+		if sqliteErr.Code == 19 && sqliteErr.ExtendedCode == 2067 {
 			isNew = false
 			_, err = repo.GetAccount(acct.Handle)
 			return
@@ -376,8 +372,10 @@ func (repo *Repo) AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, e
 		return
 	}
 
-	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-		if mysqlErr.Number == 1062 { // Duplicate key: account with this handle already exists
+	// Duplicate key: feed post for this account+guid_hash already exists
+	if sqliteErr, ok := err.(*sqlite3.Error); ok {
+		// Duplicate key: account with this handle already exists
+		if sqliteErr.Code == 19 && sqliteErr.ExtendedCode == 2067 {
 			isNew = false
 			err = nil
 			return

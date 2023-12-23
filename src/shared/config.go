@@ -21,7 +21,7 @@ type Config struct {
 	LogLevel    string    `json:"log_level"`
 	ServicePort uint      `json:"service_port"`
 	Host        string    `json:"host"`
-	Db          DbConfig  `json:"db"`
+	DbFile      string    `json:"db_file"`
 	Birb        *UserInfo `json:"birb"`
 }
 
@@ -32,12 +32,6 @@ type UserInfo struct {
 	HeaderPic  string    `json:"header_pic"`
 	PubKey     string    `json:"pub_key"`
 	PrivKey    string    `json:"priv_key"`
-}
-
-type DbConfig struct {
-	Net    string `json:"net"`
-	Addr   string `json:"addr"`
-	DbName string `json:"db_name"`
 }
 
 type Secrets struct {
