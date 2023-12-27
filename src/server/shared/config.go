@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	configVarName  = "CONFIG"                   // If set, will load config.json from this path and not from devConfigPath
-	secretsVarName = "SECRETS"                  // If set, will load secrets.json from this path and not from devSecretsPath
-	devConfigPath  = "../dev/config.dev.jsonc"  // Path to config.json in development environment
-	devSecretsPath = "../dev/secrets.dev.jsonc" // Path to config.json in development environment
+	configVarName  = "CONFIG"                      // If set, will load config.json from this path and not from devConfigPath
+	secretsVarName = "SECRETS"                     // If set, will load secrets.json from this path and not from devSecretsPath
+	devConfigPath  = "../../dev/config.dev.jsonc"  // Path to config.json in development environment
+	devSecretsPath = "../../dev/secrets.dev.jsonc" // Path to config.json in development environment
 )
 
 type Config struct {
