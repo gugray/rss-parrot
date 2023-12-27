@@ -8,7 +8,10 @@ import (
 	"net/http"
 	"rss_parrot/shared"
 	"strconv"
+	"strings"
 )
+
+var staticFS = http.FileServer(http.Dir("./www/"))
 
 func NewHTTPServer(cfg *shared.Config, logger shared.ILogger, lc fx.Lifecycle, router *mux.Router) *http.Server {
 	addStr := ":" + strconv.FormatUint(uint64(cfg.ServicePort), 10)
@@ -41,22 +44,42 @@ func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
 			subRouter.HandleFunc(def.pattern, def.handler).Methods(def.method)
 		}
 	}
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./www/")))
-	//r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handleFallback(logger, w, r) })
-	// TODO: Fix fallback so we get a log of missed requests
-	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handleFallback(logger, w, r) })
+	// Static files with error logging
+	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleStatic(logger, w, r)
+	})
 	return router
 }
 
-func handleFallback(logger shared.ILogger, w http.ResponseWriter, r *http.Request) {
-	query := ""
-	if r.URL.RawQuery != "" {
-		query += "?" + r.URL.RawQuery
+func handleStatic(logger shared.ILogger, w http.ResponseWriter, r *http.Request) {
+
+	logNonOK := func(code int) {
+		query := ""
+		if r.URL.RawQuery != "" {
+			query += "?" + r.URL.RawQuery
+		}
+		logger.Infof("%s request had status %d: %s%s", r.Method, code, r.URL.Path, query)
 	}
-	body := string(readBody(logger, w, r))
-	logger.Infof("404 %s request: %s%s", r.Method, r.URL.Path, query)
-	if body != "" {
-		logger.Infof("BODY: %s", body)
+
+	if r.Method == "GET" && r.URL.Path != "/" && strings.HasSuffix(r.URL.Path, "/") {
+		logNonOK(403)
+		http.Error(w, dirListNotAllowed, 403)
+		return
 	}
-	http.Error(w, notFoundStr, http.StatusNotFound)
+
+	cw := capturingResponseWriter{w, http.StatusOK}
+	staticFS.ServeHTTP(&cw, r)
+	if cw.statusCode >= 400 {
+		logNonOK(cw.statusCode)
+	}
+}
+
+type capturingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (lrw *capturingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
 }
