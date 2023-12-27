@@ -24,7 +24,7 @@ type messenger struct {
 	cfg             *shared.Config
 	logger          shared.ILogger
 	repo            dal.IRepo
-	keyHandler      IKeyHandler
+	keyStore        IKeyStore
 	sender          IActivitySender
 	idb             shared.IdBuilder
 	newTootsInQueue chan struct{}
@@ -35,16 +35,16 @@ func NewMessenger(
 	cfg *shared.Config,
 	logger shared.ILogger,
 	repo dal.IRepo,
-	keyHandler IKeyHandler,
+	keyStore IKeyStore,
 	sender IActivitySender,
 ) IMessenger {
 	m := messenger{
-		cfg:        cfg,
-		logger:     logger,
-		repo:       repo,
-		keyHandler: keyHandler,
-		sender:     sender,
-		idb:        shared.IdBuilder{cfg.Host},
+		cfg:      cfg,
+		logger:   logger,
+		repo:     repo,
+		keyStore: keyStore,
+		sender:   sender,
+		idb:      shared.IdBuilder{cfg.Host},
 	}
 	m.newTootsInQueue = make(chan struct{})
 	m.tqProgress = make(map[int]interface{})
@@ -180,7 +180,7 @@ func (m *messenger) sendToInbox(byUser string, to, cc []string, toInbox string,
 
 	m.logger.Infof("Sending to inbox: %s", toInbox)
 
-	privKey, err := m.keyHandler.GetPrivKey(byUser)
+	privKey, err := m.keyStore.GetPrivKey(byUser)
 	if err != nil {
 		return err
 	}

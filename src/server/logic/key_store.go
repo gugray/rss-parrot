@@ -9,34 +9,34 @@ import (
 	"rss_parrot/shared"
 )
 
-type IKeyHandler interface {
+type IKeyStore interface {
 	GetPrivKey(user string) (*rsa.PrivateKey, error)
 	MakeKeyPair() (pubKey, privKey string, err error)
 }
 
-type keyHandler struct {
+type keyStore struct {
 	cfg  *shared.Config
 	repo dal.IRepo
 }
 
-func NewKeyHandler(cfg *shared.Config, repo dal.IRepo) IKeyHandler {
-	return &keyHandler{cfg, repo}
+func NewKeyStore(cfg *shared.Config, repo dal.IRepo) IKeyStore {
+	return &keyStore{cfg, repo}
 }
 
-func (kh *keyHandler) getSpecialAccountKey(user string) string {
-	if user == kh.cfg.Birb.User {
-		return kh.cfg.Birb.PrivKey
+func (ks *keyStore) getSpecialAccountKey(user string) string {
+	if user == ks.cfg.Birb.User {
+		return ks.cfg.Birb.PrivKey
 	}
 	return ""
 }
 
-func (kh *keyHandler) GetPrivKey(user string) (*rsa.PrivateKey, error) {
+func (ks *keyStore) GetPrivKey(user string) (*rsa.PrivateKey, error) {
 
 	var err error
 
-	privKeyStr := kh.getSpecialAccountKey(user)
+	privKeyStr := ks.getSpecialAccountKey(user)
 	if privKeyStr == "" {
-		privKeyStr, err = kh.repo.GetPrivKey(user)
+		privKeyStr, err = ks.repo.GetPrivKey(user)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +45,7 @@ func (kh *keyHandler) GetPrivKey(user string) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode([]byte(privKeyStr))
 	privKeyBytes := block.Bytes
 	if x509.IsEncryptedPEMBlock(block) {
-		privKeyBytes, err = x509.DecryptPEMBlock(block, []byte(kh.cfg.Secrets.BirdPrivKeyPass))
+		privKeyBytes, err = x509.DecryptPEMBlock(block, []byte(ks.cfg.Secrets.BirdPrivKeyPass))
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +57,7 @@ func (kh *keyHandler) GetPrivKey(user string) (*rsa.PrivateKey, error) {
 	return privkey, nil
 }
 
-func (kh *keyHandler) MakeKeyPair() (pubKey, privKey string, err error) {
+func (ks *keyStore) MakeKeyPair() (pubKey, privKey string, err error) {
 
 	pubKey = ""
 	privKey = ""
@@ -76,7 +76,7 @@ func (kh *keyHandler) MakeKeyPair() (pubKey, privKey string, err error) {
 	keyRaw := x509.MarshalPKCS1PrivateKey(key)
 	encBlock, err := x509.EncryptPEMBlock(
 		rand.Reader, "RSA PRIVATE KEY", keyRaw,
-		[]byte(kh.cfg.Secrets.BirdPrivKeyPass), x509.PEMCipherAES256)
+		[]byte(ks.cfg.Secrets.BirdPrivKeyPass), x509.PEMCipherAES256)
 	if err != nil {
 		return
 	}

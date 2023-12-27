@@ -25,7 +25,7 @@ type inbox struct {
 	idb             shared.IdBuilder
 	repo            dal.IRepo
 	txt             texts.ITexts
-	keyHandler      IKeyHandler
+	keyStore        IKeyStore
 	sender          IActivitySender
 	messenger       IMessenger
 	fdfol           IFeedFollower
@@ -38,7 +38,7 @@ func NewInbox(
 	logger shared.ILogger,
 	repo dal.IRepo,
 	txt texts.ITexts,
-	keyHandler IKeyHandler,
+	keyStore IKeyStore,
 	sender IActivitySender,
 	messenger IMessenger,
 	fdfol IFeedFollower,
@@ -46,7 +46,7 @@ func NewInbox(
 	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/u/([^/]+)/?")
 	reHttps := regexp.MustCompile("https://[^ ]+")
 	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt,
-		keyHandler, sender, messenger, fdfol,
+		keyStore, sender, messenger, fdfol,
 		reUserUrlParser, reHttps}
 }
 
@@ -122,7 +122,7 @@ func (ib *inbox) sendFollowAccept(followedUserName, inboxUrl string, actFollow *
 
 	ib.logger.Infof("Sending 'Accept' to %s", inboxUrl)
 
-	privKey, err := ib.keyHandler.GetPrivKey(followedUserName)
+	privKey, err := ib.keyStore.GetPrivKey(followedUserName)
 	if err != nil {
 		ib.logger.Errorf("Failed to private key for user %s: %v", followedUserName, err)
 		return

@@ -32,12 +32,12 @@ type SiteInfo struct {
 }
 
 type feedFollower struct {
-	cfg        *shared.Config
-	logger     shared.ILogger
-	repo       dal.IRepo
-	messenger  IMessenger
-	txt        texts.ITexts
-	keyHandler IKeyHandler
+	cfg       *shared.Config
+	logger    shared.ILogger
+	repo      dal.IRepo
+	messenger IMessenger
+	txt       texts.ITexts
+	keyStore  IKeyStore
 }
 
 func NewFeedFollower(
@@ -46,15 +46,15 @@ func NewFeedFollower(
 	repo dal.IRepo,
 	messenger IMessenger,
 	txt texts.ITexts,
-	keyHandler IKeyHandler,
+	keyStore IKeyStore,
 ) IFeedFollower {
 	ff := feedFollower{
-		cfg:        cfg,
-		logger:     logger,
-		repo:       repo,
-		messenger:  messenger,
-		txt:        txt,
-		keyHandler: keyHandler,
+		cfg:       cfg,
+		logger:    logger,
+		repo:      repo,
+		messenger: messenger,
+		txt:       txt,
+		keyStore:  keyStore,
 	}
 	go ff.feedCheckLoop()
 	return &ff
@@ -374,7 +374,7 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) *dal.Account {
 
 	var pubKey string
 	var privKey string
-	pubKey, privKey, err = ff.keyHandler.MakeKeyPair()
+	pubKey, privKey, err = ff.keyStore.MakeKeyPair()
 	if err != nil {
 		ff.logger.Errorf("Failed to create key pair: %v", err)
 		return nil

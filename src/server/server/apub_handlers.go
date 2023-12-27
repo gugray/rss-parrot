@@ -42,6 +42,10 @@ func NewApubHandlerGroup(
 	return &res
 }
 
+func (hg *apubHandlerGroup) Prefix() string {
+	return ""
+}
+
 func (hg *apubHandlerGroup) GroupDefs() []handlerDef {
 	return []handlerDef{
 		{"GET", "/.well-known/webfinger", func(w http.ResponseWriter, r *http.Request) { hg.getWebfinger(w, r) }},
@@ -52,6 +56,10 @@ func (hg *apubHandlerGroup) GroupDefs() []handlerDef {
 		{"POST", "/u/{user}/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postInbox(w, r) }},
 		{"POST", "/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postInbox(w, r) }},
 	}
+}
+
+func (hg *apubHandlerGroup) AuthMW() func(next http.Handler) http.Handler {
+	return emptyMW
 }
 
 func (hg *apubHandlerGroup) getWebfinger(w http.ResponseWriter, r *http.Request) {

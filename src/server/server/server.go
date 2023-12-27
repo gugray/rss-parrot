@@ -32,17 +32,20 @@ func NewHTTPServer(cfg *shared.Config, logger shared.ILogger, lc fx.Lifecycle, r
 }
 
 func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
-	r := mux.NewRouter()
+	router := mux.NewRouter()
 	for _, group := range groups {
+		subRouter := router.PathPrefix(group.Prefix()).Subrouter()
+		authMW := group.AuthMW()
+		subRouter.Use(authMW)
 		for _, def := range group.GroupDefs() {
-			r.HandleFunc(def.pattern, def.handler).Methods(def.method)
+			subRouter.HandleFunc(def.pattern, def.handler).Methods(def.method)
 		}
 	}
-	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./www/")))
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./www/")))
 	//r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handleFallback(logger, w, r) })
 	// TODO: Fix fallback so we get a log of missed requests
-	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handleFallback(logger, w, r) })
-	return r
+	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handleFallback(logger, w, r) })
+	return router
 }
 
 func handleFallback(logger shared.ILogger, w http.ResponseWriter, r *http.Request) {

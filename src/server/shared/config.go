@@ -35,9 +35,8 @@ type UserInfo struct {
 }
 
 type Secrets struct {
-	DbUser          string `json:"db_user"`
-	DbPass          string `json:"db_pass"`
-	BirdPrivKeyPass string `json:"birb_privkey_passphrase"`
+	BirdPrivKeyPass string   `json:"birb_privkey_passphrase"`
+	ApiKeys         []string `json:"api_keys"`
 }
 
 func LoadConfig() *Config {

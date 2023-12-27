@@ -9,9 +9,11 @@ import (
 )
 
 const (
+	apiKeyHeader     = "X-API-KEY"
 	internalErrorStr = "Internal Server Error"
 	badRequestStr    = "Invalid Request"
 	notFoundStr      = "Not Found"
+	badApiKeyStr     = "Missing or invalid API key"
 )
 
 // Defines a single HTTP handler (endpoint)
@@ -23,7 +25,15 @@ type handlerDef struct {
 
 // IHandlerGroup groups together multiple HTTP handler definitions.
 type IHandlerGroup interface {
+	Prefix() string
 	GroupDefs() []handlerDef
+	AuthMW() func(next http.Handler) http.Handler
+}
+
+func emptyMW(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r)
+	})
 }
 
 // Returns the JSON serialized object as the response body; handles errors.
