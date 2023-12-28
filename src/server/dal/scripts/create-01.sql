@@ -13,6 +13,7 @@ CREATE TABLE accounts
 (
     id                INTEGER PRIMARY KEY NOT NULL,
     created_at        DATETIME            NOT NULL,
+    approve_status    INTEGER             NOT NULL DEFAULT 0,
     user_url          TEXT                NOT NULL,
     handle            TEXT                NOT NULL,
     name              TEXT                NOT NULL DEFAULT (''),
@@ -30,15 +31,19 @@ CREATE INDEX idx_102 ON accounts (next_check_due);
 
 CREATE TABLE followers
 (
-    account_id   INTEGER NOT NULL,
-    user_url     TEXT    NOT NULL,
-    handle       TEXT    NOT NULL,
-    host         TEXT    NOT NULL,
-    shared_inbox TEXT    NOT NULL,
+    account_id     INTEGER NOT NULL,
+    request_id     TEXT    NOT NULL,
+    approve_status INTEGER NOT NULL DEFAULT 0,
+    user_url       TEXT    NOT NULL,
+    handle         TEXT    NOT NULL,
+    host           TEXT    NOT NULL,
+    user_inbox     TEXT    NOT NULL,
+    shared_inbox   TEXT    NOT NULL,
     FOREIGN KEY (account_id) REFERENCES accounts (id)
 );
 CREATE INDEX idx_110 ON followers (user_url);
 CREATE INDEX idx_111 ON followers (account_id);
+CREATE UNIQUE INDEX idx_112 ON followers (account_id, user_url);
 
 CREATE TABLE feed_posts
 (
@@ -62,7 +67,6 @@ CREATE TABLE toots
     FOREIGN KEY (account_id) REFERENCES accounts (id)
 );
 
-
 CREATE TABLE toot_queue
 (
     id           INTEGER PRIMARY KEY,
@@ -71,4 +75,12 @@ CREATE TABLE toot_queue
     tooted_at    DATETIME NOT NULL,
     status_id    TEXT     NOT NULL,
     content      TEXT     NOT NULL
-)
+);
+
+CREATE TABLE handled_activities
+(
+    activity_id TEXT     NOT NULL,
+    handled_at  DATETIME NOT NULL
+);
+CREATE UNIQUE INDEX idx_130 ON handled_activities (activity_id);
+CREATE INDEX idx_131 ON handled_activities (handled_at);

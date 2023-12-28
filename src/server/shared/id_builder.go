@@ -59,6 +59,10 @@ type IdBuilder struct {
 	Host string
 }
 
+func (idb *IdBuilder) ActivityUrl(id uint64) string {
+	return fmt.Sprintf("https://%s/activity/%d", idb.Host, id)
+}
+
 func (idb *IdBuilder) SiteUrl() string {
 	return fmt.Sprintf("https://%s", idb.Host)
 }

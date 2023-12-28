@@ -29,14 +29,16 @@ type IRepo interface {
 	UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error
 	AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error)
 	GetAccountToCheck(checkDue time.Time) (*Account, error)
-	GetFollowerCount(user string) (uint, error)
-	GetFollowersByUser(user string) ([]*MastodonUserInfo, error)
-	GetFollowersById(accountId int) ([]*MastodonUserInfo, error)
-	AddFollower(user string, follower *MastodonUserInfo) error
+	GetApprovedFollowerCount(user string) (uint, error)
+	GetFollowersByUser(user string, onlyApproved bool) ([]*FollowerInfo, error)
+	GetFollowersById(accountId int, onlyApproved bool) ([]*FollowerInfo, error)
+	SetFollowerApproveStatus(user, followerUserUrl string, status int) error
+	AddFollower(user string, follower *FollowerInfo) error
 	RemoveFollower(user, followerUserUrl string) error
 	AddTootQueueItem(tqi *TootQueueItem) error
 	GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, error)
 	DeleteTootQueueItem(id int) error
+	MarkActivityHandled(id string, when time.Time) (alreadyHandled bool, err error)
 }
 
 type Repo struct {
@@ -126,10 +128,6 @@ func (repo *Repo) InitUpdateDb() {
 	if dbVer == 0 {
 		repo.mustAddBuiltInUsers()
 	}
-
-	// DBG
-	_, _ = repo.AddAccountIfNotExist(&Account{Handle: "handle"}, "xyz")
-	_, _ = repo.AddAccountIfNotExist(&Account{Handle: "handle"}, "xyz")
 }
 
 func (repo *Repo) mustAddBuiltInUsers() {
@@ -151,9 +149,9 @@ func (repo *Repo) mustAddBuiltInUsers() {
 func (repo *Repo) AddAccountIfNotExist(acct *Account, privKey string) (isNew bool, err error) {
 	isNew = true
 	_, err = repo.db.Exec(`INSERT INTO accounts
-    	(created_at, user_url, handle, name, summary, profile_image_url, site_url, feed_url, pubkey, privkey)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		acct.CreatedAt, acct.UserUrl, acct.Handle, acct.Name, acct.Summary, acct.ProfileImageUrl,
+    	(created_at, approve_status, user_url, handle, name, summary, profile_image_url, site_url, feed_url, pubkey, privkey)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		acct.CreatedAt, acct.ApproveStatus, acct.UserUrl, acct.Handle, acct.Name, acct.Summary, acct.ProfileImageUrl,
 		acct.SiteUrl, acct.FeedUrl, acct.PubKey, privKey)
 	if err == nil {
 		return
@@ -182,12 +180,12 @@ func (repo *Repo) DoesAccountExist(user string) (bool, error) {
 
 func (repo *Repo) GetAccount(user string) (*Account, error) {
 	row := repo.db.QueryRow(
-		`SELECT id, created_at, user_url, handle, name, summary, profile_image_url, site_url, feed_url,
+		`SELECT id, created_at, approve_status, user_url, handle, name, summary, profile_image_url, site_url, feed_url,
          		feed_last_updated, next_check_due, pubkey
 		FROM accounts WHERE handle=?`, user)
 	var err error
 	var res Account
-	err = row.Scan(&res.Id, &res.CreatedAt, &res.UserUrl, &res.Handle, &res.Name, &res.Summary,
+	err = row.Scan(&res.Id, &res.CreatedAt, &res.ApproveStatus, &res.UserUrl, &res.Handle, &res.Name, &res.Summary,
 		&res.ProfileImageUrl, &res.SiteUrl, &res.FeedUrl, &res.FeedLastUpdated, &res.NextCheckDue, &res.PubKey)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -243,9 +241,10 @@ func (repo *Repo) AddToot(accountId int, toot *Toot) error {
 	return nil
 }
 
-func (repo *Repo) GetFollowerCount(user string) (uint, error) {
+func (repo *Repo) GetApprovedFollowerCount(user string) (uint, error) {
 	row := repo.db.QueryRow(`SELECT COUNT(*) FROM followers JOIN accounts
-		ON followers.account_id=accounts.id AND accounts.handle=?`, user)
+		ON followers.account_id=accounts.id AND accounts.handle=?
+		WHERE followers.approve_status=1`, user)
 	var err error
 	var count int
 	if err = row.Scan(&count); err != nil {
@@ -254,9 +253,26 @@ func (repo *Repo) GetFollowerCount(user string) (uint, error) {
 	return uint(count), nil
 }
 
-func (repo *Repo) GetFollowersByUser(user string) ([]*MastodonUserInfo, error) {
-	rows, err := repo.db.Query(`SELECT followers.user_url, followers.handle, host, shared_inbox
-		FROM followers JOIN accounts ON followers.account_id=accounts.id AND accounts.handle=?`, user)
+func (repo *Repo) SetFollowerApproveStatus(user, followerUserUrl string, status int) error {
+	acct, err := repo.GetAccount(user)
+	if err != nil {
+		return err
+	}
+	_, err = repo.db.Exec(`UPDATE followers SET approve_status=? WHERE account_id=? AND user_url=?`,
+		status, acct.Id, followerUserUrl)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (repo *Repo) GetFollowersByUser(user string, onlyApproved bool) ([]*FollowerInfo, error) {
+	query := `SELECT followers.request_id, followers.user_url, followers.handle, host, user_inbox, shared_inbox
+		FROM followers JOIN accounts ON followers.account_id=accounts.id AND accounts.handle=?`
+	if onlyApproved {
+		query += ` WHERE followers.approve_status=1`
+	}
+	rows, err := repo.db.Query(query, user)
 	if err != nil {
 		return nil, err
 	}
@@ -264,9 +280,12 @@ func (repo *Repo) GetFollowersByUser(user string) ([]*MastodonUserInfo, error) {
 	return readGetFollowers(rows)
 }
 
-func (repo *Repo) GetFollowersById(accountId int) ([]*MastodonUserInfo, error) {
-	rows, err := repo.db.Query(`SELECT user_url, handle, host, shared_inbox
-		FROM followers WHERE account_id=?`, accountId)
+func (repo *Repo) GetFollowersById(accountId int, onlyApproved bool) ([]*FollowerInfo, error) {
+	query := `SELECT request_id, user_url, handle, host, user_inbox, shared_inbox FROM followers WHERE account_id=?`
+	if onlyApproved {
+		query += ` AND followers.approve_status=1`
+	}
+	rows, err := repo.db.Query(query, accountId)
 	if err != nil {
 		return nil, err
 	}
@@ -274,12 +293,13 @@ func (repo *Repo) GetFollowersById(accountId int) ([]*MastodonUserInfo, error) {
 	return readGetFollowers(rows)
 }
 
-func readGetFollowers(rows *sql.Rows) ([]*MastodonUserInfo, error) {
+func readGetFollowers(rows *sql.Rows) ([]*FollowerInfo, error) {
 	var err error
-	res := make([]*MastodonUserInfo, 0)
+	res := make([]*FollowerInfo, 0)
 	for rows.Next() {
-		mui := MastodonUserInfo{}
-		if err = rows.Scan(&mui.UserUrl, &mui.Handle, &mui.Host, &mui.SharedInbox); err != nil {
+		mui := FollowerInfo{}
+		err = rows.Scan(&mui.RequestId, &mui.UserUrl, &mui.Handle, &mui.Host, &mui.UserInbox, &mui.SharedInbox)
+		if err != nil {
 			return nil, err
 		}
 		res = append(res, &mui)
@@ -290,15 +310,17 @@ func readGetFollowers(rows *sql.Rows) ([]*MastodonUserInfo, error) {
 	return res, nil
 }
 
-func (repo *Repo) AddFollower(user string, follower *MastodonUserInfo) error {
+func (repo *Repo) AddFollower(user string, flwr *FollowerInfo) error {
 	row := repo.db.QueryRow(`SELECT id FROM accounts WHERE handle=?`, user)
 	var err error
 	var accountId int
 	if err = row.Scan(&accountId); err != nil {
 		return err
 	}
-	_, err = repo.db.Exec(`INSERT INTO followers VALUES(?, ?, ?, ?, ?)`,
-		accountId, follower.UserUrl, follower.Handle, follower.Host, follower.SharedInbox)
+	_, err = repo.db.Exec(`INSERT INTO followers VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT DO UPDATE SET request_id=excluded.request_id, approve_status=excluded.approve_status`,
+		accountId, flwr.RequestId, flwr.ApproveStatus, flwr.UserUrl, flwr.Handle, flwr.Host,
+		flwr.UserInbox, flwr.SharedInbox)
 	if err != nil {
 		return err
 	}
@@ -337,8 +359,8 @@ func (repo *Repo) UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDu
 }
 
 func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, error) {
-	rows, err := repo.db.Query(`SELECT id, created_at, user_url, handle, name, summary, profile_image_url,
-    	site_url, feed_url, feed_last_updated, next_check_due, pubkey
+	rows, err := repo.db.Query(`SELECT id, created_at, approve_status, user_url, handle, name, summary,
+    	profile_image_url, site_url, feed_url, feed_last_updated, next_check_due, pubkey
 		FROM accounts WHERE next_check_due<? LIMIT 1`, checkDue)
 	if err != nil {
 		return nil, err
@@ -347,7 +369,7 @@ func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, error) {
 	var acct *Account = nil
 	for rows.Next() {
 		res := Account{}
-		err = rows.Scan(&res.Id, &res.CreatedAt, &res.UserUrl, &res.Handle, &res.Name, &res.Summary,
+		err = rows.Scan(&res.Id, &res.CreatedAt, &res.ApproveStatus, &res.UserUrl, &res.Handle, &res.Name, &res.Summary,
 			&res.ProfileImageUrl, &res.SiteUrl, &res.FeedUrl, &res.FeedLastUpdated, &res.NextCheckDue, &res.PubKey)
 		if err = rows.Err(); err != nil {
 			return nil, err
@@ -417,4 +439,29 @@ func (repo *Repo) GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, er
 func (repo *Repo) DeleteTootQueueItem(id int) error {
 	_, err := repo.db.Exec(`DELETE FROM toot_queue WHERE id=?`, id)
 	return err
+}
+
+func (repo *Repo) MarkActivityHandled(id string, when time.Time) (alreadyHandled bool, err error) {
+
+	alreadyHandled = false
+	err = nil
+
+	_, err = repo.db.Exec(`INSERT INTO handled_activities VALUES (?, ?)`, id, when)
+
+	if err == nil {
+		return
+	}
+
+	// Duplicate key: activity was handled before
+	if sqliteErr, ok := err.(*sqlite3.Error); ok {
+		// Duplicate key: account with this handle already exists
+		if sqliteErr.Code == 19 && sqliteErr.ExtendedCode == 2067 {
+			alreadyHandled = true
+			err = nil
+			return
+		}
+	}
+
+	return
+
 }

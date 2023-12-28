@@ -7,6 +7,7 @@ import (
 type Account struct {
 	Id              int
 	CreatedAt       time.Time
+	ApproveStatus   int    // <=-100: banned; 1: has been manually approved before
 	UserUrl         string // https://rss-parrot.net/u/ludic.mataroa.blog
 	Handle          string // ludic.mataroa.blog
 	Name            string // Ludicity
@@ -17,11 +18,12 @@ type Account struct {
 	NextCheckDue    time.Time
 	PubKey          string
 	ProfileImageUrl string
+	HeaderImageUrl  string
 }
 
 type Mention struct {
 	StatusIdUrl string
-	UserInfo    *MastodonUserInfo
+	UserInfo    *FollowerInfo
 }
 
 type FeedPost struct {
@@ -48,9 +50,12 @@ type TootQueueItem struct {
 	Content     string
 }
 
-type MastodonUserInfo struct {
-	UserUrl     string // https://genart.social/users/twilliability
-	Handle      string // twilliability
-	Host        string // genart.social
-	SharedInbox string // https://genart.social/inbox
+type FollowerInfo struct {
+	RequestId     string // ID of the follow request activity; needed for approve reply
+	ApproveStatus int    // 0: unapproved, 1: approved, negative: banned
+	UserUrl       string // https://genart.social/users/twilliability
+	Handle        string // twilliability
+	Host          string // genart.social
+	UserInbox     string // https://genart.social/users/twilliability/inbox
+	SharedInbox   string // https://genart.social/inbox
 }

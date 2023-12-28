@@ -26,12 +26,13 @@ type Config struct {
 }
 
 type UserInfo struct {
-	User       string    `json:"user"`
-	Published  time.Time `json:"published"`
-	ProfilePic string    `json:"profile_pic"`
-	HeaderPic  string    `json:"header_pic"`
-	PubKey     string    `json:"pub_key"`
-	PrivKey    string    `json:"priv_key"`
+	User                    string    `json:"user"`
+	Published               time.Time `json:"published"`
+	ManuallyApprovesFollows bool      `json:"manually_approves_follows"`
+	ProfilePic              string    `json:"profile_pic"`
+	HeaderPic               string    `json:"header_pic"`
+	PubKey                  string    `json:"pub_key"`
+	PrivKey                 string    `json:"priv_key"`
 }
 
 type Secrets struct {

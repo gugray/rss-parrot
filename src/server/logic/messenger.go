@@ -72,7 +72,7 @@ func (m *messenger) SendMessageSync(byUser string, toInbox, msg string,
 
 func (m *messenger) EnqueueBroadcast(user string, statusId string, tootedAt time.Time, msg string) error {
 
-	followers, err := m.repo.GetFollowersByUser(user)
+	followers, err := m.repo.GetFollowersByUser(user, true)
 	if err != nil {
 		return err
 	}

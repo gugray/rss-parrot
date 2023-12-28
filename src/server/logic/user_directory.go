@@ -21,17 +21,35 @@ type IUserDirectory interface {
 	GetOutboxSummary(user string) *dto.OrderedListSummary
 	GetFollowersSummary(user string) *dto.OrderedListSummary
 	GetFollowingSummary(user string) *dto.OrderedListSummary
+	AcceptFollower(followActId, followerUserUrl, followerInbox, followedUser string) error
 }
 
 type userDirectory struct {
-	cfg  *shared.Config
-	repo dal.IRepo
-	idb  shared.IdBuilder
-	txt  texts.ITexts
+	cfg      *shared.Config
+	logger   shared.ILogger
+	repo     dal.IRepo
+	idb      shared.IdBuilder
+	keyStore IKeyStore
+	sender   IActivitySender
+	txt      texts.ITexts
 }
 
-func NewUserDirectory(cfg *shared.Config, repo dal.IRepo, txt texts.ITexts) IUserDirectory {
-	return &userDirectory{cfg, repo, shared.IdBuilder{cfg.Host}, txt}
+func NewUserDirectory(
+	cfg *shared.Config,
+	logger shared.ILogger,
+	repo dal.IRepo,
+	keyStore IKeyStore,
+	sender IActivitySender,
+	txt texts.ITexts,
+) IUserDirectory {
+	return &userDirectory{
+		cfg:      cfg,
+		logger:   logger,
+		repo:     repo,
+		idb:      shared.IdBuilder{cfg.Host},
+		keyStore: keyStore,
+		sender:   sender,
+		txt:      txt}
 }
 
 func (udir *userDirectory) GetWebfinger(user string) *dto.WebfingerResp {
@@ -65,15 +83,16 @@ func (udir *userDirectory) GetWebfinger(user string) *dto.WebfingerResp {
 	return &resp
 }
 
-func (udir *userDirectory) patchSpecialAccount(acct *dal.Account) bool {
+func (udir *userDirectory) patchSpecialAccount(acct *dal.Account) (bool, bool) {
 	if acct.Handle == udir.cfg.Birb.User {
 		acct.Name = udir.txt.Get("birb_name.txt")
 		acct.Summary = udir.txt.Get("birb_bio.html")
 		acct.PubKey = udir.cfg.Birb.PubKey
 		acct.ProfileImageUrl = udir.cfg.Birb.ProfilePic
-		return true
+		acct.HeaderImageUrl = udir.cfg.Birb.HeaderPic
+		return true, udir.cfg.Birb.ManuallyApprovesFollows
 	}
-	return false
+	return false, false
 }
 
 func (udir *userDirectory) getWebsiteAttachment(acct *dal.Account) string {
@@ -92,7 +111,7 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 	if err != nil || acct == nil {
 		return nil // TODO errors
 	}
-	builtIn := udir.patchSpecialAccount(acct)
+	_, manuallyApproves := udir.patchSpecialAccount(acct)
 
 	resp := dto.UserInfo{
 		Context: []string{
@@ -104,7 +123,7 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 		PreferredUserName: user,
 		Name:              acct.Name,
 		Summary:           acct.Summary,
-		ManuallyApproves:  builtIn,
+		ManuallyApproves:  manuallyApproves,
 		Published:         acct.CreatedAt.Format(time.RFC3339),
 		Inbox:             udir.idb.UserInbox(user),
 		Outbox:            udir.idb.UserOutbox(user),
@@ -127,10 +146,10 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 			Type: "Image",
 			Url:  acct.ProfileImageUrl,
 		},
-		//Image: dto.Image{
-		//	Type: "Image",
-		//	Url:  userInfo.HeaderPic,
-		//},
+		Image: dto.Image{
+			Type: "Image",
+			Url:  acct.HeaderImageUrl,
+		},
 	}
 	return &resp
 }
@@ -168,7 +187,7 @@ func (udir *userDirectory) GetFollowersSummary(user string) *dto.OrderedListSumm
 	}
 
 	var followerCount uint
-	followerCount, err = udir.repo.GetFollowerCount(user) // TODO errors
+	followerCount, err = udir.repo.GetApprovedFollowerCount(user) // TODO errors
 
 	resp := dto.OrderedListSummary{
 		Context:    "https://www.w3.org/ns/activitystreams",
@@ -196,4 +215,42 @@ func (udir *userDirectory) GetFollowingSummary(user string) *dto.OrderedListSumm
 		TotalItems: 0,
 	}
 	return &resp
+}
+
+func (udir *userDirectory) AcceptFollower(followActId, followerUserUrl, followerInbox, followedUser string) error {
+
+	udir.logger.Infof("Accepting follow %s", followerInbox)
+
+	privKey, err := udir.keyStore.GetPrivKey(followedUser)
+	if err != nil {
+		err = fmt.Errorf("failed to get private key for user %s: %v", followedUser, err)
+		return err
+	}
+
+	acceptId := udir.repo.GetNextId()
+
+	actAccept := dto.ActivityOut{
+		Context: "https://www.w3.org/ns/activitystreams",
+		Id:      udir.idb.ActivityUrl(acceptId),
+		Type:    "Accept",
+		Actor:   udir.idb.UserUrl(followedUser),
+		Object: dto.ActivityOut{
+			Id:     followActId,
+			Type:   "Follow",
+			Actor:  followerUserUrl,
+			Object: udir.idb.UserUrl(followedUser),
+		},
+	}
+
+	if err = udir.sender.Send(privKey, followedUser, followerInbox, &actAccept); err != nil {
+		err = fmt.Errorf("failed to send 'Accept' activity: %v", err)
+		return err
+	}
+
+	if err = udir.repo.SetFollowerApproveStatus(followedUser, followerUserUrl, 1); err != nil {
+		err = fmt.Errorf("failed set follower approve status: %v", err)
+		return err
+	}
+
+	return nil
 }

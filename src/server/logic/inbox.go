@@ -25,6 +25,7 @@ type inbox struct {
 	idb             shared.IdBuilder
 	repo            dal.IRepo
 	txt             texts.ITexts
+	udir            IUserDirectory
 	keyStore        IKeyStore
 	sender          IActivitySender
 	messenger       IMessenger
@@ -38,6 +39,7 @@ func NewInbox(
 	logger shared.ILogger,
 	repo dal.IRepo,
 	txt texts.ITexts,
+	udir IUserDirectory,
 	keyStore IKeyStore,
 	sender IActivitySender,
 	messenger IMessenger,
@@ -45,7 +47,7 @@ func NewInbox(
 ) IInbox {
 	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/u/([^/]+)/?")
 	reHttps := regexp.MustCompile("https://[^ ]+")
-	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt,
+	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt, udir,
 		keyStore, sender, messenger, fdfol,
 		reUserUrlParser, reHttps}
 }
@@ -69,16 +71,22 @@ func (ib *inbox) HandleFollow(
 		return
 	}
 
-	// Is this a built-in account (ie not a feed parrot)?
-	// Those are not taking followers
-	//if account.FeedUrl == "" {
-	//	return "", nil
-	//}
-
+	// Unmarshal as Follow activity
 	var actFollow dto.ActivityIn[string]
 	if jsonErr := json.Unmarshal(bodyBytes, &actFollow); jsonErr != nil {
 		ib.logger.Info("Invalid JSON in Follow activity body")
 		reqProblem = fmt.Sprintf("Invalid JSON: %d", jsonErr)
+		return
+	}
+
+	// This activity already handled?
+	var alreadyHandled bool
+	alreadyHandled, err = ib.repo.MarkActivityHandled(actFollow.Id, time.Now())
+	if err != nil {
+		return
+	}
+	if alreadyHandled {
+		ib.logger.Infof("Activity has already been handled: %s", actFollow.Id)
 		return
 	}
 
@@ -101,44 +109,35 @@ func (ib *inbox) HandleFollow(
 		return
 	}
 
-	err = ib.repo.AddFollower(receivingUser, &dal.MastodonUserInfo{
-		UserUrl:     actFollow.Actor,
-		Handle:      senderInfo.PreferredUserName,
-		Host:        actorHostName,
-		SharedInbox: senderInfo.Endpoints.SharedInbox,
-	})
+	flwr := dal.FollowerInfo{
+		RequestId:     actFollow.Id,
+		ApproveStatus: 0,
+		UserUrl:       actFollow.Actor,
+		Handle:        senderInfo.PreferredUserName,
+		Host:          actorHostName,
+		UserInbox:     senderInfo.Inbox,
+		SharedInbox:   senderInfo.Endpoints.SharedInbox,
+	}
+	err = ib.repo.AddFollower(receivingUser, &flwr)
 	if err != nil {
 		return "", err
 	}
 
-	go ib.sendFollowAccept(receivingUser, senderInfo.Inbox, &actFollow)
+	autoAccept := true
+	if account.Handle == ib.cfg.Birb.User && ib.cfg.Birb.ManuallyApprovesFollows {
+		autoAccept = false
+	}
+	if autoAccept {
+		go func() {
+			time.Sleep(1000)
+			err := ib.udir.AcceptFollower(flwr.RequestId, flwr.UserUrl, flwr.UserInbox, receivingUser)
+			if err != nil {
+				ib.logger.Errorf("Error accepting follower: %v", err)
+			}
+		}()
+	}
 
 	return
-}
-
-func (ib *inbox) sendFollowAccept(followedUserName, inboxUrl string, actFollow *dto.ActivityIn[string]) {
-
-	time.Sleep(1000)
-
-	ib.logger.Infof("Sending 'Accept' to %s", inboxUrl)
-
-	privKey, err := ib.keyStore.GetPrivKey(followedUserName)
-	if err != nil {
-		ib.logger.Errorf("Failed to private key for user %s: %v", followedUserName, err)
-		return
-	}
-
-	actAccept := dto.ActivityOut{
-		Context: "https://www.w3.org/ns/activitystreams",
-		Id:      actFollow.Object,
-		Type:    "Accept",
-		Actor:   actFollow.Object,
-		Object:  actFollow,
-	}
-
-	if err = ib.sender.Send(privKey, followedUserName, inboxUrl, &actAccept); err != nil {
-		ib.logger.Warnf("Failed to send 'Accept' activity: %v", err)
-	}
 }
 
 func (ib *inbox) HandleUndo(
@@ -160,6 +159,17 @@ func (ib *inbox) HandleUndo(
 	if jsonErr := json.Unmarshal(bodyBytes, &actUndo); jsonErr != nil {
 		ib.logger.Info("Invalid JSON in Undo activity body")
 		reqProblem = fmt.Sprintf("Invalid JSON: %d", jsonErr)
+		return
+	}
+
+	// This activity already handled?
+	var alreadyHandled bool
+	alreadyHandled, err = ib.repo.MarkActivityHandled(actUndo.Id, time.Now())
+	if err != nil {
+		return
+	}
+	if alreadyHandled {
+		ib.logger.Infof("Activity has already been handled: %s", actUndo.Id)
 		return
 	}
 
@@ -221,6 +231,17 @@ func (ib *inbox) HandleCreateNote(
 
 	reqProblem = ""
 	err = nil
+
+	// This activity already handled?
+	var alreadyHandled bool
+	alreadyHandled, err = ib.repo.MarkActivityHandled(actBase.Id, time.Now())
+	if err != nil {
+		return
+	}
+	if alreadyHandled {
+		ib.logger.Infof("Activity has already been handled: %s", actBase.Id)
+		return
+	}
 
 	// Is it addressed to both me, and "public"?
 	birbUsrUrl := ib.idb.UserUrl(ib.cfg.Birb.User)
