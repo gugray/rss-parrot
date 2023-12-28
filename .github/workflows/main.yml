@@ -23,11 +23,11 @@ jobs:
     #   working-directory: ./src
     #   run: 'echo "${{github.ref_name}}" >version.txt'
 
-    - name: Build Go app
-      run: ./build.sh
+    # - name: Build Go app
+    #   run: ./build.sh
 
     - name: Build Docker image
-      run: docker build --platform=linux/amd64 -t rss-parrot .
+      run: docker build --progress=plain --platform=linux/amd64 -t rss-parrot .
 
     - name: Push Docker image to Amazon ECR
       id: ecr
