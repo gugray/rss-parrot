@@ -194,6 +194,19 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 		writeErrorResponse(w, "Signer does not match actor", http.StatusUnauthorized)
 	}
 
+	hg.processActivity(userName, bodyBytes, senderInfo, act, w)
+}
+
+func (hg *apubHandlerGroup) processActivity(
+	userName string,
+	bodyBytes []byte,
+	senderInfo *dto.UserInfo,
+	act dto.ActivityInBase,
+	w http.ResponseWriter,
+) {
+
+	var err error
+
 	// Find out Object's type if object field is, well, an object
 	// If yes, grab object type field
 	objectType := ""
