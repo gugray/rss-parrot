@@ -19,12 +19,9 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v2
 
-    # - name: Write version from REF to file
-    #   working-directory: ./src
-    #   run: 'echo "${{github.ref_name}}" >version.txt'
-
-    # - name: Build Go app
-    #   run: ./build.sh
+    - name: Write version from REF to file
+      working-directory: ./src/server/www
+      run: 'echo "${{github.ref_name}}" >version.txt'
 
     - name: Build Docker image
       run: docker build --progress=plain --platform=linux/amd64 -t rss-parrot .
