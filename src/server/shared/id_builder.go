@@ -40,13 +40,13 @@ func GetHandleFromUrl(url string) string {
 		if c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '-' || c == '.' {
 			buf.WriteByte(c)
 		} else {
-			buf.WriteString("..")
+			buf.WriteString(".")
 		}
 	}
 	res := buf.String()
 
 	for {
-		merged := strings.ReplaceAll(res, "...", "..")
+		merged := strings.ReplaceAll(res, ".", ".")
 		if len(merged) == len(res) {
 			break
 		}
