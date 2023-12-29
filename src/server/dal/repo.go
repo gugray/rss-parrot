@@ -45,6 +45,7 @@ type Repo struct {
 	cfg    *shared.Config
 	logger shared.ILogger
 	db     *sql.DB
+	muDb   sync.RWMutex
 	muId   sync.Mutex
 	nextId uint64
 }
@@ -56,6 +57,7 @@ func NewRepo(cfg *shared.Config, logger shared.ILogger) IRepo {
 
 	// https://phiresky.github.io/blog/2020/sqlite-performance-tuning/
 	// https://www.reddit.com/r/golang/comments/16xswxd/concurrency_when_writing_data_into_sqlite/
+	// https://github.com/mattn/go-sqlite3/issues/1022#issuecomment-1067353980
 	// _synchronous=1 is "normal"
 	cstr := "file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_synchronous=1&_busy_timeout=5000"
 	db, err = sql.Open("sqlite3", fmt.Sprintf(cstr, cfg.DbFile))
@@ -151,6 +153,10 @@ func (repo *Repo) mustAddBuiltInUsers() {
 }
 
 func (repo *Repo) AddAccountIfNotExist(acct *Account, privKey string) (isNew bool, err error) {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
 	isNew = true
 	_, err = repo.db.Exec(`INSERT INTO accounts
     	(created_at, approve_status, user_url, handle, name, summary, profile_image_url, site_url, feed_url, pubkey, privkey)
@@ -165,7 +171,7 @@ func (repo *Repo) AddAccountIfNotExist(acct *Account, privKey string) (isNew boo
 		// Duplicate key: account with this handle already exists
 		if sqliteErr.Code == 19 && sqliteErr.ExtendedCode == 2067 {
 			isNew = false
-			_, err = repo.GetAccount(acct.Handle)
+			_, err = repo.getAccount(acct.Handle)
 			return
 		}
 	}
@@ -173,6 +179,10 @@ func (repo *Repo) AddAccountIfNotExist(acct *Account, privKey string) (isNew boo
 }
 
 func (repo *Repo) DoesAccountExist(user string) (bool, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
 	row := repo.db.QueryRow(`SELECT COUNT(*) FROM accounts WHERE handle=?`, user)
 	var err error
 	var count int
@@ -183,6 +193,15 @@ func (repo *Repo) DoesAccountExist(user string) (bool, error) {
 }
 
 func (repo *Repo) GetAccount(user string) (*Account, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
+	return repo.getAccount(user)
+}
+
+func (repo *Repo) getAccount(user string) (*Account, error) {
+
 	row := repo.db.QueryRow(
 		`SELECT id, created_at, approve_status, user_url, handle, name, summary, profile_image_url, site_url, feed_url,
          		feed_last_updated, next_check_due, pubkey
@@ -202,6 +221,10 @@ func (repo *Repo) GetAccount(user string) (*Account, error) {
 }
 
 func (repo *Repo) GetPrivKey(user string) (string, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
 	row := repo.db.QueryRow(`SELECT privkey FROM accounts WHERE handle=?`, user)
 	var err error
 	var res string
@@ -217,6 +240,10 @@ func (repo *Repo) GetPrivKey(user string) (string, error) {
 }
 
 func (repo *Repo) SetPrivKey(user, privKey string) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
 	_, err := repo.db.Exec("UPDATE accounts SET privkey=? WHERE handle=?", privKey, user)
 	if err != nil {
 		return err
@@ -225,6 +252,10 @@ func (repo *Repo) SetPrivKey(user, privKey string) error {
 }
 
 func (repo *Repo) GetTootCount(user string) (uint, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
 	row := repo.db.QueryRow(`SELECT COUNT(*) FROM toots JOIN accounts
 		ON toots.account_id=accounts.id AND accounts.handle=?`, user)
 	var err error
@@ -236,6 +267,10 @@ func (repo *Repo) GetTootCount(user string) (uint, error) {
 }
 
 func (repo *Repo) AddToot(accountId int, toot *Toot) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
 	_, err := repo.db.Exec(`INSERT INTO toots (account_id, post_guid_hash, tooted_at, status_id, content)
 		VALUES(?, ?, ?, ?, ?)`,
 		accountId, toot.PostGuidHash, toot.TootedAt, toot.StatusId, toot.Content)
@@ -246,6 +281,10 @@ func (repo *Repo) AddToot(accountId int, toot *Toot) error {
 }
 
 func (repo *Repo) GetApprovedFollowerCount(user string) (uint, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
 	row := repo.db.QueryRow(`SELECT COUNT(*) FROM followers JOIN accounts
 		ON followers.account_id=accounts.id AND accounts.handle=?
 		WHERE followers.approve_status=1`, user)
@@ -258,7 +297,11 @@ func (repo *Repo) GetApprovedFollowerCount(user string) (uint, error) {
 }
 
 func (repo *Repo) SetFollowerApproveStatus(user, followerUserUrl string, status int) error {
-	acct, err := repo.GetAccount(user)
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
+	acct, err := repo.getAccount(user)
 	if err != nil {
 		return err
 	}
@@ -271,6 +314,10 @@ func (repo *Repo) SetFollowerApproveStatus(user, followerUserUrl string, status 
 }
 
 func (repo *Repo) GetFollowersByUser(user string, onlyApproved bool) ([]*FollowerInfo, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
 	query := `SELECT followers.request_id, followers.user_url, followers.handle, host, user_inbox, shared_inbox
 		FROM followers JOIN accounts ON followers.account_id=accounts.id AND accounts.handle=?`
 	if onlyApproved {
@@ -285,6 +332,10 @@ func (repo *Repo) GetFollowersByUser(user string, onlyApproved bool) ([]*Followe
 }
 
 func (repo *Repo) GetFollowersById(accountId int, onlyApproved bool) ([]*FollowerInfo, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
 	query := `SELECT request_id, user_url, handle, host, user_inbox, shared_inbox FROM followers WHERE account_id=?`
 	if onlyApproved {
 		query += ` AND followers.approve_status=1`
@@ -315,6 +366,10 @@ func readGetFollowers(rows *sql.Rows) ([]*FollowerInfo, error) {
 }
 
 func (repo *Repo) AddFollower(user string, flwr *FollowerInfo) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
 	row := repo.db.QueryRow(`SELECT id FROM accounts WHERE handle=?`, user)
 	var err error
 	var accountId int
@@ -332,6 +387,10 @@ func (repo *Repo) AddFollower(user string, flwr *FollowerInfo) error {
 }
 
 func (repo *Repo) RemoveFollower(user, followerUserUrl string) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
 	row := repo.db.QueryRow(`SELECT id FROM accounts WHERE handle=?`, user)
 	var err error
 	var accountId int
@@ -347,6 +406,10 @@ func (repo *Repo) RemoveFollower(user, followerUserUrl string) error {
 }
 
 func (repo *Repo) GetFeedLastUpdated(accountId int) (res time.Time, err error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
 	res = time.Time{}
 	err = nil
 	row := repo.db.QueryRow("SELECT feed_last_updated FROM accounts WHERE id=?", accountId)
@@ -357,12 +420,20 @@ func (repo *Repo) GetFeedLastUpdated(accountId int) (res time.Time, err error) {
 }
 
 func (repo *Repo) UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
 	_, err := repo.db.Exec(`UPDATE accounts SET feed_last_updated=?, next_check_due=?
         WHERE id=?`, lastUpdated, nextCheckDue, accountId)
 	return err
 }
 
 func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
 	rows, err := repo.db.Query(`SELECT id, created_at, approve_status, user_url, handle, name, summary,
     	profile_image_url, site_url, feed_url, feed_last_updated, next_check_due, pubkey
 		FROM accounts WHERE next_check_due<? LIMIT 1`, checkDue)
@@ -385,6 +456,9 @@ func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, error) {
 }
 
 func (repo *Repo) AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error) {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
 
 	err = nil
 
@@ -412,6 +486,10 @@ func (repo *Repo) AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, e
 }
 
 func (repo *Repo) AddTootQueueItem(tqi *TootQueueItem) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
 	_, err := repo.db.Exec(`INSERT INTO toot_queue (sending_user, to_inbox, tooted_at, status_id, content)
 		VALUES(?, ?, ?, ?, ?)`,
 		tqi.SendingUser, tqi.ToInbox, tqi.TootedAt, tqi.StatusId, tqi.Content)
@@ -419,6 +497,10 @@ func (repo *Repo) AddTootQueueItem(tqi *TootQueueItem) error {
 }
 
 func (repo *Repo) GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
 	rows, err := repo.db.Query(`SELECT id, sending_user, to_inbox, tooted_at, status_id, content
 		FROM toot_queue WHERE id>? ORDER BY id ASC LIMIT ?`, aboveId, maxCount)
 	if err != nil {
@@ -441,11 +523,18 @@ func (repo *Repo) GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, er
 }
 
 func (repo *Repo) DeleteTootQueueItem(id int) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
 	_, err := repo.db.Exec(`DELETE FROM toot_queue WHERE id=?`, id)
 	return err
 }
 
 func (repo *Repo) MarkActivityHandled(id string, when time.Time) (alreadyHandled bool, err error) {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
 
 	alreadyHandled = false
 	err = nil
