@@ -46,11 +46,15 @@ func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
 		subRouter.Use(noCacheMW)
 		subRouter.Use(authMW)
 		for _, def := range group.GroupDefs() {
-			subRouter.HandleFunc(def.pattern, def.handler).Methods("OPTIONS", def.method)
+			if def.pattern == rootPlacholder {
+				router.HandleFunc("/", def.handler).Methods("OPTIONS", def.method)
+			} else {
+				subRouter.HandleFunc(def.pattern, def.handler).Methods("OPTIONS", def.method)
+			}
 		}
 	}
 	// Static files with error logging
-	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.PathPrefix("/assets").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handleStatic(logger, w, r)
 	})
 	return router
@@ -73,14 +77,13 @@ func handleStatic(logger shared.ILogger, w http.ResponseWriter, r *http.Request)
 		logger.Infof("%s request had status %d: %s%s", r.Method, code, r.URL.Path, query)
 	}
 
-	isAsset := strings.HasPrefix(r.URL.Path, assetsDir)
-	if r.Method == "GET" && r.URL.Path != "/" && strings.HasSuffix(r.URL.Path, "/") {
+	if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/") {
 		logNonOK(403)
 		http.Error(w, dirListNotAllowed, 403)
 		return
 	}
 
-	cw := staticFileResponseWriter{w, http.StatusOK, isAsset}
+	cw := staticFileResponseWriter{w, http.StatusOK}
 	staticFS.ServeHTTP(&cw, r)
 	if cw.statusCode >= 400 {
 		logNonOK(cw.statusCode)
@@ -90,17 +93,10 @@ func handleStatic(logger shared.ILogger, w http.ResponseWriter, r *http.Request)
 type staticFileResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
-	cached     bool
 }
 
 func (lrw *staticFileResponseWriter) WriteHeader(code int) {
 	lrw.statusCode = code
-	if lrw.cached {
-		lrw.ResponseWriter.Header().Set(strCacheControlHdr, strCacheControlNoChacheVal)
-	} else {
-		lrw.ResponseWriter.Header().Set(strCacheControlHdr, "no-cache, no-store, must-revalidate")
-		lrw.ResponseWriter.Header().Set("Pragma", "no-cache")
-		lrw.ResponseWriter.Header().Set("Expires", "0")
-	}
+	lrw.ResponseWriter.Header().Set(strCacheControlHdr, strCacheControlNoChacheVal)
 	lrw.ResponseWriter.WriteHeader(code)
 }

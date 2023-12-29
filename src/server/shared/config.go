@@ -16,14 +16,15 @@ const (
 )
 
 type Config struct {
-	Secrets        Secrets        `json:"-"`
-	LogFile        string         `json:"log_file"`
-	LogLevel       string         `json:"log_level"`
-	ServicePort    uint           `json:"service_port"`
-	Host           string         `json:"host"`
-	DbFile         string         `json:"db_file"`
-	UpdateSchedule UpdateSchedule `json:"update_schedule"`
-	Birb           *UserInfo      `json:"birb"`
+	Secrets            Secrets        `json:"-"`
+	LogFile            string         `json:"log_file"`
+	LogLevel           string         `json:"log_level"`
+	ServicePort        uint           `json:"service_port"`
+	Host               string         `json:"host"`
+	DbFile             string         `json:"db_file"`
+	CachePageTemplates bool           `json:"cache_page_templates"`
+	UpdateSchedule     UpdateSchedule `json:"update_schedule"`
+	Birb               *UserInfo      `json:"birb"`
 }
 
 type UpdateSchedule struct {

@@ -10,6 +10,7 @@ import (
 
 const (
 	apiKeyHeader      = "X-API-KEY"
+	rootPlacholder    = "*root*"
 	internalErrorStr  = "500 Internal Server Error"
 	badRequestStr     = "400 Invalid Request"
 	notFoundStr       = "404 Not Found"

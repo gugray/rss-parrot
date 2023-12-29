@@ -55,6 +55,7 @@ func main() {
 			dal.NewRepo,
 			asHandlerGroupDef(server.NewApubHandlerGroup),
 			asHandlerGroupDef(server.NewApiHandlerGroup),
+			asHandlerGroupDef(server.NewWebHandlerGroup),
 		),
 		fx.Invoke(
 			registerHooks,

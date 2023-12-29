@@ -1,0 +1,88 @@
+/* Defines */
+:root {
+  --fntSans: "Open Sans", sans-serif;
+  --fntSizeBase: 16px;
+  --fntSizeH1: 42px;
+  --clrText: #444;
+  --clrTextFainter: #777;
+  --clrBodyBg: #fff;
+  --clrControl: #9f7e52;
+  --clrControlHover: #d08e4c;
+  --clrError: #c45151;
+}
+
+/* Global overrides */
+* { box-sizing: border-box; }
+a { color: #2e84e5; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+button {
+  display: inline-block; border-radius: 0; border: 1px solid var(--clrTextFainter);
+  font-size: var(--fntSizeBase); padding: 4px 16px;
+}
+
+& input[type=text] {
+  border-radius: 0; border: 1px solid var(--clrTextFainter);
+  font-family: inherit; color: var(--clrText); background-color: var(--clrBodyBg);
+  font-size: var(--fntSizeBase); padding: 2px 6px;
+}
+
+/* Layout, specifics */
+html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
+html { background-color: rgb(var(--clrBodyBg)); }
+body {
+  overflow-y: scroll; font-family: var(--fntSans); font-size: var(--fntSizeBase); color: var(--clrText);
+  padding: 0 16px;
+}
+#pnlMid {
+  width: 100%; padding: 0 0; max-width: 900px; margin: 0 auto; min-height: 100%;
+  display: flex; flex-direction: column;
+}
+
+header {
+  display: flex; justify-content: space-between;
+  padding: 16px 0 16px 0;
+  div { display: flex; width: auto; justify-items: flex-start; }
+  h1 { font-size: var(--fntSizeH1); font-weight: bold; width: auto; padding: 0; margin: 0; }
+  .beta { font-size: 16px; display: block; width: auto; padding: 6px 0 0 8px; font-weight: bold; }
+}
+
+footer {
+  display: flex; justify-content: flex-end;
+
+}
+
+main {
+  flex-grow: 1;
+}
+
+
+
+@font-face {
+  font-display: swap;
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/assets/OpenSans-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-display: swap;
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 600;
+  src: url('/assets/OpenSans-Semibold.woff2') format('woff2');
+}
+@font-face {
+  font-display: swap;
+  font-family: 'Open Sans';
+  font-style: italic;
+  font-weight: 400;
+  src: url('/assets/OpenSans-Italic.woff2') format('woff2');
+}
+@font-face {
+  font-display: swap;
+  font-family: 'Open Sans';
+  font-style: italic;
+  font-weight: 600;
+  src: url('/assets/OpenSans-SemiboldItalic.woff2') format('woff2');
+}
