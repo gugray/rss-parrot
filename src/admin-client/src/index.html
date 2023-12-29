@@ -28,7 +28,6 @@
   <h2>Import feeds</h2>
   <div>
     <span>Parallel requests: </span><input type="text" id="txtImportParallelReqs" value="1">
-    <button id="btnApplyImportParallelReqs">Apply</button>
     <span class="spacer"></span>
     <button id="btnImportFeeds">Start</button>
   </div>
@@ -40,6 +39,8 @@
     <span>Failed: </span><span id="lblFeedsFailed">0</span>
     <span class="spacer"></span>
     <span>Req/sec: </span><span id="lblReqPerSec">0</span>
+    <span class="spacer"></span>
+    <span>Active: </span><span id="lblActiveReqs">0</span>
   </div>
   <div id="pnlImportErrors"></div>
 </section>

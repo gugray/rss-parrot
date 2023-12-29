@@ -4,16 +4,16 @@ import {feedUrls} from "./urls-smallweb.js";
 const elmTxtServerUrl = document.getElementById("txtServerUrl");
 const elmTxtApiKey = document.getElementById("txtApiKey");
 const elmTxtImportParallelReqs = document.getElementById("txtImportParallelReqs");
-const elmBtnApplyImportParallelReqs = document.getElementById("btnApplyImportParallelReqs");
 const elmBtnImportFeeds = document.getElementById("btnImportFeeds");
 const elmLblFeedCount = document.getElementById("lblFeedCount");
 const elmLblFeedsRequested = document.getElementById("lblFeedsRequested");
 const elmLblFeedsFailed = document.getElementById("lblFeedsFailed");
 const elmLblReqPerSec = document.getElementById("lblReqPerSec");
+const elmLblActiveReqs = document.getElementById("lblActiveReqs");
 const elmPnlImportErrors = document.getElementById("pnlImportErrors");
 
 const stgsKey = "rss-parrot-admin-params";
-const postFeedTimeoutSec = 20;
+const postFeedTimeoutSec = 60;
 const reqStatPeriodSec = 10;
 
 const feedImportStats = {
@@ -75,6 +75,7 @@ function updateFeedImportValues() {
   elmLblFeedCount.innerText = feedUrls.length;
   elmLblFeedsRequested.innerText = feedImportStats.nRequested;
   elmLblFeedsFailed.innerText = feedImportStats.nFailed;
+  elmLblActiveReqs.innerText = feedImportStats.nActiveReqs;
 
   const periodStart = new Date(Date.now() - reqStatPeriodSec * 1000);
   let nCompletedInPeriod = 0;
