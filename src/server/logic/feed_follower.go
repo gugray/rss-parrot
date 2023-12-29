@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/mmcdole/gofeed"
@@ -19,7 +20,7 @@ import (
 const feedCheckLoopIdleWakeSec = 60
 
 type IFeedFollower interface {
-	GetAccountForFeed(urlStr string) *dal.Account
+	GetAccountForFeed(urlStr string) (acct *dal.Account, isNew bool, err error)
 }
 
 type SiteInfo struct {
@@ -124,7 +125,7 @@ func getLastUpdated(feed *gofeed.Feed) time.Time {
 	return t
 }
 
-func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed) {
+func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, error) {
 
 	urlStr = strings.TrimRight(urlStr, "/")
 	var res SiteInfo
@@ -141,13 +142,13 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed) {
 		res.Description = feed.Description
 		res.Url = feed.Link
 		res.ParrotHandle = shared.GetHandleFromUrl(res.Url)
-		return &res, feed
+		return &res, feed, nil
 	}
 
 	// Normalize URL
 	siteUrl, err := url.Parse(urlStr)
 	if err != nil {
-		return nil, nil
+		return nil, nil, err
 	}
 	res.Url = urlStr
 	res.ParrotHandle = shared.GetHandleFromUrl(res.Url)
@@ -156,26 +157,26 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed) {
 	resp, err := http.Get(urlStr)
 	if err != nil {
 		ff.logger.Warnf("Failed to get %s: %v", siteUrl, err)
-		return nil, nil
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		ff.logger.Warnf("Failed to get %s: status %d", siteUrl, resp.StatusCode)
-		return nil, nil
+		return nil, nil, err
 	}
 
 	// Load the HTML document
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
 		ff.logger.Warnf("Failed to parse HTML from %s: %v", siteUrl, err)
-		return nil, nil
+		return nil, nil, err
 	}
 
 	// Pick out the data we're interested in
 	res.FeedUrl = ff.getFeedUrl(siteUrl, doc)
 	if res.FeedUrl == "" {
 		ff.logger.Warnf("No feed URL found: %s", siteUrl)
-		return nil, nil
+		return nil, nil, fmt.Errorf("no feed URL found at %s", siteUrl)
 	}
 	ff.getMetas(siteUrl, doc, &res)
 
@@ -183,16 +184,17 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed) {
 	feed, err = fp.ParseURL(res.FeedUrl)
 	if err != nil {
 		ff.logger.Warnf("Failed to retrieve and parse feed: %s, %v", res.FeedUrl, err)
-		return nil, nil
+		return nil, nil, err
 	}
 	res.LastUpdated = getLastUpdated(feed)
 
-	return &res, feed
+	return &res, feed, nil
 }
 
-func getGuidHash(guid string) uint {
+func getItemHash(itm *gofeed.Item) uint {
+	str := itm.GUID + "\t" + itm.Link
 	hasher := murmur3.New32()
-	_, _ = hasher.Write([]byte(guid))
+	_, _ = hasher.Write([]byte(str))
 	return uint(hasher.Sum32())
 }
 
@@ -274,16 +276,16 @@ func (ff *feedFollower) getNextCheckTime(lastChanged time.Time) time.Time {
 	// Active in the last week: 3 hours
 	// Active in the last 4 weeks: 6 hours
 	// Inactive for over 4 weeks: 12 hours
-	var hours float64 = 1
+	var hours = float64(ff.cfg.UpdateSchedule.Day)
 	idleFor := time.Now().Sub(lastChanged)
 	if idleFor.Hours() > 24 {
-		hours = 3
+		hours = float64(ff.cfg.UpdateSchedule.Week)
 	}
 	if idleFor.Hours() > 168 {
-		hours = 6
+		hours = float64(ff.cfg.UpdateSchedule.Weeks4)
 	}
 	if idleFor.Hours() > 168*4 {
-		hours = 12
+		hours = float64(ff.cfg.UpdateSchedule.Older)
 	}
 
 	hours = hours * (0.8 + 0.4*rand.Float64()) // 0.8 - 1.2 random band around targeted value
@@ -308,7 +310,7 @@ func (ff *feedFollower) storePostIfNew(
 	plainTitle := stripHtml(itm.Title)
 	plainDescription := stripHtml(itm.Description)
 	isNew, err = ff.repo.AddFeedPostIfNew(accountId, &dal.FeedPost{
-		PostGuidHash: int64(getGuidHash(itm.GUID)),
+		PostGuidHash: int64(getItemHash(itm)),
 		PostTime:     postTime,
 		Link:         itm.Link,
 		Title:        plainTitle,
@@ -343,7 +345,7 @@ func (ff *feedFollower) createToot(accountId int, accountHandle string, itm *gof
 	statusId := idb.UserStatus(accountHandle, id)
 	tootedAt := time.Now()
 	err := ff.repo.AddToot(accountId, &dal.Toot{
-		PostGuidHash: int64(getGuidHash(itm.GUID)),
+		PostGuidHash: int64(getItemHash(itm)),
 		TootedAt:     tootedAt,
 		StatusId:     statusId,
 		Content:      content,
@@ -359,15 +361,17 @@ func (ff *feedFollower) createToot(accountId int, accountHandle string, itm *gof
 	return nil
 }
 
-func (ff *feedFollower) GetAccountForFeed(urlStr string) *dal.Account {
+func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, isNew bool, err error) {
 
 	ff.logger.Infof("Retrieving site information: %s", urlStr)
+	acct = nil
+	isNew = false
+	err = nil
 
-	var err error
-
-	si, feed := ff.getSiteInfo(urlStr)
-	if si == nil {
-		return nil
+	si, feed, siErr := ff.getSiteInfo(urlStr)
+	if siErr != nil {
+		err = siErr
+		return
 	}
 
 	idb := shared.IdBuilder{ff.cfg.Host}
@@ -377,14 +381,14 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) *dal.Account {
 	pubKey, privKey, err = ff.keyStore.MakeKeyPair()
 	if err != nil {
 		ff.logger.Errorf("Failed to create key pair: %v", err)
-		return nil
+		return
 	}
 
 	summary := ff.txt.WithVals("acct_bio.html", map[string]string{
 		"description": si.Description,
 		"siteUrl":     idb.SiteUrl(),
 	})
-	isNew, err := ff.repo.AddAccountIfNotExist(&dal.Account{
+	isNew, err = ff.repo.AddAccountIfNotExist(&dal.Account{
 		CreatedAt: time.Now(),
 		Handle:    si.ParrotHandle,
 		UserUrl:   idb.UserUrl(si.ParrotHandle),
@@ -397,25 +401,26 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) *dal.Account {
 
 	if err != nil {
 		ff.logger.Errorf("Failed to create/get account for %s: %v", si.ParrotHandle, isNew)
-		return nil
+		return
 	}
 
 	ff.logger.Infof("Account is %s; newly created: %v", si.ParrotHandle, isNew)
 
-	var acct *dal.Account
 	acct, err = ff.repo.GetAccount(si.ParrotHandle)
 	if err != nil {
 		ff.logger.Errorf("Failed to load account for %s; was newly created: %v", si.ParrotHandle, isNew)
-		return nil
+		acct = nil
+		return
 	}
 
 	err = ff.updateAccountPosts(acct.Id, si.ParrotHandle, feed, !isNew)
 	if err != nil {
 		ff.logger.Errorf("Failed to update account's posts: %s: %v", acct.Handle, err)
-		return nil
+		acct = nil
+		return
 	}
 
-	return acct
+	return
 }
 
 func (ff *feedFollower) updateFeed(acct *dal.Account) error {

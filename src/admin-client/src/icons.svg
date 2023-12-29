@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="iconsSVG" style="display: none;">
+  <symbol viewBox="0 0 256 256" id="icon-pulse">
+    <polyline points="24 128 56 128 96 40 160 208 200 128 232 128" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+  </symbol>
+  </svg>

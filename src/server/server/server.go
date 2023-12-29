@@ -41,7 +41,7 @@ func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
 		authMW := group.AuthMW()
 		subRouter.Use(authMW)
 		for _, def := range group.GroupDefs() {
-			subRouter.HandleFunc(def.pattern, def.handler).Methods(def.method)
+			subRouter.HandleFunc(def.pattern, def.handler).Methods("OPTIONS", def.method)
 		}
 	}
 	// Static files with error logging

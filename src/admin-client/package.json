@@ -1,19 +1,13 @@
 {
-  "name": "agt-ratty-client",
+  "name": "rss-parrot-admin-client",
+  "type": "module",
   "version": "0.0.1",
-  "description": "A ratty browser client for the memoQ AGT service",
+  "description": "Minimalist browser-based admin client for the RSS Parrot service",
   "license": "MIT",
-  "author": {
-    "name": "Gábor L Ugray",
-    "email": "gabor.ugray@memoq.com"
-  },
   "dependencies": {
-    "vanillajs-datepicker": "^1.3.4"
   },
   "devDependencies": {
-    "esbuild": "^0.16.17",
-    "esbuild-plugin-less": "^1.2.4",
-    "livereload": "^0.9.3",
-    "static-server": "^2.2.1"
+    "@jgoz/esbuild-plugin-livereload": "^2.0.3",
+    "esbuild": "^0.19.10"
   }
 }

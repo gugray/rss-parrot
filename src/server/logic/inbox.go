@@ -321,10 +321,10 @@ func (ib *inbox) HandleCreateNote(
 
 func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[dto.Note], moniker, blogUrl string) {
 
-	acct := ib.fdfol.GetAccountForFeed(blogUrl)
+	acct, _, err := ib.fdfol.GetAccountForFeed(blogUrl)
 
 	if acct == nil {
-		ib.logger.Infof("Could not create/retrieve account for site: %s", blogUrl)
+		ib.logger.Infof("Could not create/retrieve account for site: %s: %v", blogUrl, err)
 		msg := ib.txt.WithVals("reply_site_not_found.html", map[string]string{
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
@@ -355,14 +355,6 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 	// @birb@rss-parrot.zydeo.net https://soatok.blog/b/
 	// @birb@rss-parrot.zydeo.net https://magazine.sebastianraschka.com/
 	// @birb@rss-parrot.zydeo.net https://mastodon.social/@zydeobor
-
-	// TODO
-	// Parse URL out of message
-	// We need a 'messenger' that can send immediate and scheduled message. Swallows 'broadcaster'.
-	// We need a 'feed_follower' that can retrieve initial feed info, and updates
-	// We need a 'scheduled_poller' that automates/coordinates feed_follower and broadcaster
-	// Go -> [init feed / find existing; send reply based on outcome]
-
 }
 
 func (ib *inbox) getUrl(content string) string {

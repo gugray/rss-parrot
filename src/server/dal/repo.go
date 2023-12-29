@@ -395,8 +395,8 @@ func (repo *Repo) AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, e
 	}
 
 	// Duplicate key: feed post for this account+guid_hash already exists
-	if sqliteErr, ok := err.(*sqlite3.Error); ok {
-		// Duplicate key: account with this handle already exists
+	if sqliteErr, ok := err.(sqlite3.Error); ok {
+		// Duplicate key: record with this unique key already exists
 		if sqliteErr.Code == 19 && sqliteErr.ExtendedCode == 2067 {
 			isNew = false
 			err = nil
@@ -453,7 +453,7 @@ func (repo *Repo) MarkActivityHandled(id string, when time.Time) (alreadyHandled
 	}
 
 	// Duplicate key: activity was handled before
-	if sqliteErr, ok := err.(*sqlite3.Error); ok {
+	if sqliteErr, ok := err.(sqlite3.Error); ok {
 		// Duplicate key: account with this handle already exists
 		if sqliteErr.Code == 19 && sqliteErr.ExtendedCode == 2067 {
 			alreadyHandled = true

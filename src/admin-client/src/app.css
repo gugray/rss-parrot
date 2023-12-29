@@ -1,0 +1,82 @@
+/* Defines */
+:root {
+  --fntSans: "Open Sans", sans-serif;
+  --fntSizeBase: 16px;
+  --clrText: #444;
+  --clrTextFainter: #777;
+  --clrBodyBg: #fff;
+  --clrControl: #9f7e52;
+  --clrControlHover: #d08e4c;
+  --clrError: #c45151;
+}
+
+/* Global overrides */
+* { box-sizing: border-box; }
+a { color: #2e84e5; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+button {
+  display: inline-block; border-radius: 0; border: 1px solid var(--clrTextFainter);
+  font-size: var(--fntSizeBase); padding: 4px 16px;
+}
+
+& input[type=text] {
+  border-radius: 0; border: 1px solid var(--clrTextFainter);
+  font-family: inherit; color: var(--clrText); background-color: var(--clrBodyBg);
+  font-size: var(--fntSizeBase); padding: 2px 6px;
+}
+
+/* Layout, specifics */
+html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
+html { background-color: rgb(var(--clrBodyBg)); padding: 32px; }
+body {
+  font-family: var(--fntSans); font-size: var(--fntSizeBase); color: var(--clrText);
+  overflow-y: scroll; display: flex; flex-direction: column;
+}
+
+section {
+  border: 1px solid var(--clrTextFainter); position: relative;
+  padding: 16px; margin-bottom: 32px;
+  > h2 {
+    margin: 0; position: absolute; top: -13px; left: 8px; padding: 0 8px;
+    background-color: var(--clrBodyBg);
+    font-size: var(--fntSizeBase); font-weight: 600;
+  }
+  > div { margin-top: 12px; }
+  > div:first-of-type { margin-top: 4px; }
+}
+
+#txtServerUrl { width: 300px; }
+#txtApiKey { width: 300px; }
+#txtImportParallelReqs { width: 50px; text-align: center; }
+.spacer { display: inline-block; width: 24px; }
+#pnlImportErrors { white-space: pre-wrap; color: var(--clrError); }
+
+@font-face {
+  font-display: swap;
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 400;
+  src: url('fonts/OpenSans-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-display: swap;
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 600;
+  src: url('fonts/OpenSans-Semibold.woff2') format('woff2');
+}
+@font-face {
+  font-display: swap;
+  font-family: 'Open Sans';
+  font-style: italic;
+  font-weight: 400;
+  src: url('fonts/OpenSans-Italic.woff2') format('woff2');
+}
+@font-face {
+  font-display: swap;
+  font-family: 'Open Sans';
+  font-style: italic;
+  font-weight: 600;
+  src: url('fonts/OpenSans-SemiboldItalic.woff2') format('woff2');
+}

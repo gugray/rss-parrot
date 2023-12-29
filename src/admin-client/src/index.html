@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Admin ~ RSS parrot</title>
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+  <link rel="stylesheet" href="./app.css?ver=%%VERSION%%">
+  <script defer src="./app.js?ver=%%VERSION%%" type="module"></script>
+</head>
+<body>
+
+<object type="image/svg+xml" data="icons.svg?ver=%%VERSION%%"
+        onload="this.parentNode.replaceChild(this.contentDocument.documentElement, this)">
+</object>
+<!--<svg><use href="#icon-pulse"></use></svg>-->
+
+<section>
+  <h2>Server parameters</h2>
+  <div>
+    <span>Server URL: </span><input type="text" id="txtServerUrl" value="https://rss-parrot.zydeo.net/">
+    <span class="spacer"></span>
+    <span>API key: </span><input type="text" id="txtApiKey">
+  </div>
+</section>
+
+<section>
+  <h2>Import feeds</h2>
+  <div>
+    <span>Parallel requests: </span><input type="text" id="txtImportParallelReqs" value="1">
+    <button id="btnApplyImportParallelReqs">Apply</button>
+    <span class="spacer"></span>
+    <button id="btnImportFeeds">Start</button>
+  </div>
+  <div>
+    <span>Feeds: </span><span id="lblFeedCount">0</span>
+    <span class="spacer"></span>
+    <span>Requested: </span><span id="lblFeedsRequested">0</span>
+    <span class="spacer"></span>
+    <span>Failed: </span><span id="lblFeedsFailed">0</span>
+    <span class="spacer"></span>
+    <span>Req/sec: </span><span id="lblReqPerSec">0</span>
+  </div>
+  <div id="pnlImportErrors"></div>
+</section>
+
+</body>
+</html>
