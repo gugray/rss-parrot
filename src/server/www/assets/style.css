@@ -1,7 +1,7 @@
 /* Defines */
 :root {
   --fntSans: "Open Sans", sans-serif;
-  --fntSizeBase: 16px;
+  --fntSizeBase: 18px;
   --fntSizeH1: 42px;
   --clrText: #444;
   --clrTextFainter: #777;
@@ -9,11 +9,19 @@
   --clrControl: #9f7e52;
   --clrControlHover: #d08e4c;
   --clrError: #c45151;
+  --clrLink: #be4005;
+  --clrP1: #89a206;
+  --clrP2: #da281c;
+  --clrP3: #117680;
+  --clrP4: #bb3804;
+  --clrP5: #0a62ac;
+  --clrP6: #a6870a;
+  --clrP7: #e9bc08;
 }
 
 /* Global overrides */
 * { box-sizing: border-box; }
-a { color: #2e84e5; text-decoration: none; }
+a { color: var(--clrLink); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 button {
@@ -27,6 +35,14 @@ button {
   font-size: var(--fntSizeBase); padding: 2px 6px;
 }
 
+.cp1 { color: var(--clrP1); }
+.cp2 { color: var(--clrP2); }
+.cp3 { color: var(--clrP3); }
+.cp4 { color: var(--clrP4); }
+.cp5 { color: var(--clrP5); }
+.cp6 { color: var(--clrP6); }
+.cp7 { color: var(--clrP7); }
+
 /* Layout, specifics */
 html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
 html { background-color: rgb(var(--clrBodyBg)); }
@@ -39,17 +55,21 @@ body {
   display: flex; flex-direction: column;
 }
 
-header {
-  display: flex; justify-content: space-between;
-  padding: 16px 0 16px 0;
-  div { display: flex; width: auto; justify-items: flex-start; }
-  h1 { font-size: var(--fntSizeH1); font-weight: bold; width: auto; padding: 0; margin: 0; }
-  .beta { font-size: 16px; display: block; width: auto; padding: 6px 0 0 8px; font-weight: bold; }
+header { display: flex; justify-content: space-between; padding: 16px 0 16px 0; }
+header div { display: flex; width: auto; justify-items: flex-start; }
+header h1 { font-size: var(--fntSizeH1); font-weight: bold; width: auto; padding: 0; margin: 0; }
+header .beta { font-size: 16px; display: block; width: auto; padding: 6px 0 0 8px; font-weight: bold; }
+header .beta span { border: 1px solid var(--clrText); border-radius: 3px; padding: 0 3px; }
+header nav { display: flex; justify-content: flex-start; align-items: flex-end; }
+header nav a {
+  display: block; font-size: 24px; border-bottom: 3px solid transparent;
+  margin-right: 20px; margin-bottom: 3px;
 }
+header nav a:last-of-type { margin-right: 0; }
+header nav a:hover { border-bottom-color: var(--clrLink); text-decoration: none; }
 
 footer {
-  display: flex; justify-content: flex-end;
-
+  display: flex; justify-content: flex-end; font-size: 15px;
 }
 
 main {
