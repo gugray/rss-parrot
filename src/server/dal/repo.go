@@ -54,7 +54,7 @@ func NewRepo(cfg *shared.Config, logger shared.ILogger) IRepo {
 	var err error
 	var db *sql.DB
 
-	db, err = sql.Open("sqlite3", fmt.Sprintf("file:%s??cache=shared&mode=rwc", cfg.DbFile))
+	db, err = sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL", cfg.DbFile))
 	if err != nil {
 		logger.Errorf("Failed to open/create DB file: %s: %v", cfg.DbFile, err)
 		panic(err)
