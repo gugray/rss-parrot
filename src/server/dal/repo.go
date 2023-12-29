@@ -54,7 +54,11 @@ func NewRepo(cfg *shared.Config, logger shared.ILogger) IRepo {
 	var err error
 	var db *sql.DB
 
-	db, err = sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL", cfg.DbFile))
+	// https://phiresky.github.io/blog/2020/sqlite-performance-tuning/
+	// https://www.reddit.com/r/golang/comments/16xswxd/concurrency_when_writing_data_into_sqlite/
+	// _synchronous=1 is "normal"
+	cstr := "file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_synchronous=1&_busy_timeout=5000"
+	db, err = sql.Open("sqlite3", fmt.Sprintf(cstr, cfg.DbFile))
 	if err != nil {
 		logger.Errorf("Failed to open/create DB file: %s: %v", cfg.DbFile, err)
 		panic(err)
