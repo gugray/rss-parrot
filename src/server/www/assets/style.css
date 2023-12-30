@@ -55,9 +55,11 @@ body {
   display: flex; flex-direction: column;
 }
 
-header { display: flex; justify-content: space-between; padding: 16px 0 16px 0; }
+header { display: flex; justify-content: space-between; flex-wrap: wrap; padding: 16px 0 16px 0; }
 header div { display: flex; width: auto; justify-items: flex-start; }
 header h1 { font-size: var(--fntSizeH1); font-weight: bold; width: auto; padding: 0; margin: 0; }
+header div a { text-decoration: none; }
+header div a:hover { text-decoration: none; }
 header .beta { font-size: 16px; display: block; width: auto; padding: 6px 0 0 8px; font-weight: bold; }
 header .beta span { border: 1px solid var(--clrText); border-radius: 3px; padding: 0 3px; }
 header nav { display: flex; justify-content: flex-start; align-items: flex-end; }
@@ -67,6 +69,21 @@ header nav a {
 }
 header nav a:last-of-type { margin-right: 0; }
 header nav a:hover { border-bottom-color: var(--clrLink); text-decoration: none; }
+
+.bottom-spacer { height: 64px; }
+.inline-icon { width: 24px; height: 24px; vertical-align: bottom; }
+.circled-numbers { display: flex; }
+.circled-numbers .number { padding-right: 10px; }
+.circled-numbers .content { flex-grow: 1; min-width: 0; }
+.circled-numbers .content p:first-child { margin-top: 0; }
+.circled-numbers .content img { max-width: 100%; }
+.circled-numbers .number span {
+  display: block; width: 1.5em; border-radius: 50%;
+  text-align: center; font-weight: bold;
+  color: var(--clrBodyBg); background-color: var(--clrTextFainter);
+}
+
+
 
 footer {
   display: flex; justify-content: flex-end; font-size: 15px;

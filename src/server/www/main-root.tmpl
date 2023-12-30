@@ -1,3 +1,61 @@
 {{define "main"}}
-  This is the birb's home.
+  <h2>Turn Mastodon into your feed reader</h2>
+  <div class="circled-numbers">
+    <div class="number">
+      <span>1</span>
+    </div>
+    <div class="content">
+      <p>
+        Mention <b>@birb@rss-parrot.net</b> in a toot with the address of the site you want to follow.
+        Some examples of what you can request:
+      </p>
+      <p>
+        <svg class="inline-icon"><use href="#icon-rss"></use></svg>
+        An RSS or Atom feed, like <a href="https://frockflicks.com/feed">https://frockflicks.com/feed</a><br/>
+        <svg class="inline-icon"><use href="#icon-internet"></use></svg>
+        A website or blog, like <a href="https://taiwantrailsandtales.com">https://taiwantrailsandtales.com</a><br/>
+        <svg class="inline-icon"><use href="#icon-substack"></use></svg>
+        A Substack newsletter, like <a href="https://adrianhon.substack.com">https://adrianhon.substack.com</a><br/>
+        <svg class="inline-icon"><use href="#icon-bluesky"></use></svg>
+        A Bluesky profile, like <a href="https://bsky.app/profile/chowleen.bsky.social">https://bsky.app/profile/chowleen.bsky.social</a>
+      </p>
+      <p>
+        <img src="/assets/screenshot-mention-birb.jpg" src="Screenshot of a toot mentioning the birb and including the address of a website to follow." />
+      </p>
+    </div>
+  </div>
+  <div class="circled-numbers">
+    <div class="number">
+      <span>2</span>
+    </div>
+    <div class="content">
+      <p>
+        RSS Parrot will find the link in your toot, read the website, and retrieve the address of its RSS or Atom feed.
+        If this is the first time the site is requested, RSS Parrot creates a new account dedicated to it.
+        This account will send out a new toot every time a new post appears in the feed.
+      </p>
+      <p>
+        The account's name is derived from the website's address, using only dots between the letters. In this case, it's
+        <b>@taiwantrailsandtales.com@rss-parrot.net</b>
+      </p>
+      <p>
+        The birb replies to your toot with the name of the account parroting the feed.
+      </p>
+      <p>
+        <img src="/assets/screenshot-birb-replies.jpg" alt="Screenshot of the birb's reply, containing a link to the RSS Parrot account dedicated to the feed."/>
+      </p>
+    </div>
+  </div>
+  <div class="circled-numbers">
+    <div class="number">
+      <span>3</span>
+    </div>
+    <div class="content">
+      <p>
+        <b>Follow the RSS Parrot account</b> that the birb gave you. This is important and easy to forget! ;-)
+        You'll see a toot from it in your timeline every time a new post is published on the website.
+      </p>
+    </div>
+  </div>
+  <div class="bottom-spacer"></div>
 {{end}}
