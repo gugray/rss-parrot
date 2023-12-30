@@ -46,7 +46,7 @@ func NewInbox(
 	fdfol IFeedFollower,
 ) IInbox {
 	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/u/([^/]+)/?")
-	reHttps := regexp.MustCompile("https://[^ ]+")
+	reHttps := regexp.MustCompile("https?://[^ ]+")
 	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt, udir,
 		keyStore, sender, messenger, fdfol,
 		reUserUrlParser, reHttps}

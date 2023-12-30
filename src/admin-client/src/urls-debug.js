@@ -1,4 +1,4 @@
 export const feedUrls = [
-  "https://0110.be/rss.xml",
-  "https://3.14.by/en/rss",
+  "https://aberba.com/feed.xml",
+  "https://alanralph.co.uk/feed/",
 ];

@@ -161,7 +161,8 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		ff.logger.Warnf("Failed to get %s: status %d", siteUrl, resp.StatusCode)
+		err = fmt.Errorf("request for %s failed with status %d", siteUrl, resp.StatusCode)
+		ff.logger.Warnf("Failed to get site: %v", err)
 		return nil, nil, err
 	}
 
