@@ -83,7 +83,22 @@ header nav a:hover, header nav a.selected { border-bottom-color: var(--clrLink);
   color: var(--clrBodyBg); background-color: var(--clrTextFainter);
 }
 
+nav.pager { text-align: center; margin-top: 48px; }
+nav.pager a {
+  display: inline-block; width: 36px; border: 1px solid transparent;
+  border-radius: 6px;
+}
+nav.pager a:hover { border-color: var(--clrLink); text-decoration: none; }
+nav.pager a.selected {
+  border-color: var(--clrLink); background-color: var(--clrLink); color: var(--clrBodyBg);
+}
 
+article.feed { padding: 12px 0; border-bottom: 1px dotted var(--clrTextFainter); }
+article.feed:last-of-type { border-bottom: none; }
+article.feed * { margin: 0; }
+article.feed h3 { font-size: var(--fntSizeBase); font-weight: bold; display: inline-block; }
+article.feed div span { display: inline-block; }
+article.feed p.info { font-size: 80%; }
 
 footer {
   display: flex; justify-content: flex-end; font-size: 15px;

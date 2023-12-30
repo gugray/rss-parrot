@@ -6,17 +6,26 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"rss_parrot/dal"
 	"rss_parrot/shared"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const tmplPathPrefx = "www/"
 const versionFileName = "version.txt"
+const feedsPerPage = 200
+
+var months = []string{
+	"January", "February", "March", "April", "May", "June",
+	"July", "August", "September", "October", "November", "December",
+}
 
 type webHandlerGroup struct {
 	cfg           *shared.Config
 	logger        shared.ILogger
+	repo          dal.IRepo
 	version       string
 	timestamp     string
 	pageTemplates map[string]*template.Template
@@ -25,10 +34,12 @@ type webHandlerGroup struct {
 func NewWebHandlerGroup(
 	cfg *shared.Config,
 	logger shared.ILogger,
+	repo dal.IRepo,
 ) IHandlerGroup {
 	res := webHandlerGroup{
 		cfg:           cfg,
 		logger:        logger,
+		repo:          repo,
 		timestamp:     fmt.Sprintf("%d", time.Now().UnixMilli()),
 		pageTemplates: make(map[string]*template.Template),
 	}
@@ -72,7 +83,12 @@ func (hg *webHandlerGroup) initTemplates() {
 	}
 }
 func (hg *webHandlerGroup) parsePageTemplate(mainName string) (*template.Template, error) {
+
 	t := template.New("master")
+
+	idb := shared.IdBuilder{hg.cfg.Host}
+	addTemplateFuncs(t, &idb)
+
 	var err error
 	var tmplFiles []string
 	foundMain := false
@@ -124,6 +140,23 @@ func (hg *webHandlerGroup) mustGetPageTemplate(mainName string) (*template.Templ
 	}
 }
 
+func addTemplateFuncs(t *template.Template, idb *shared.IdBuilder) {
+
+	profileUrl := func(handle string) string {
+		return idb.UserProfile(handle)
+	}
+
+	prettyDate := func(t time.Time) string {
+		return fmt.Sprintf("%s %d, %d", months[t.Month()-1], t.Day(), t.Year())
+	}
+
+	t.Funcs(template.FuncMap{
+		"isNonEmptyString": func(s string) bool { return s != "" },
+		"prettyDate":       prettyDate,
+		"profileUrl":       profileUrl,
+	})
+}
+
 type baseModel struct {
 	Timestamp     string
 	Version       string
@@ -146,13 +179,57 @@ func (hg *webHandlerGroup) getAbout(w http.ResponseWriter, r *http.Request) {
 }
 
 type feedModel struct {
-	FeedCount int
+	Feeds []*dal.Account
+	Pages []pageLink
+}
+
+type pageLink struct {
+	Query   string
+	Display int
+	Class   string
 }
 
 func (hg *webHandlerGroup) getFeeds(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	pageIx := 0
+	pageParam := r.URL.Query().Get("page")
+	if pageIx, err = strconv.Atoi(pageParam); err != nil || pageIx < 0 {
+		pageIx = 0
+	}
+
+	var accounts []*dal.Account
+	var total int
+	accounts, total, err = hg.repo.GetAccountsPage(pageIx*feedsPerPage, feedsPerPage)
+	// TODO: bespoke error if query failed
+	if err != nil {
+		accounts = make([]*dal.Account, 0)
+		total = 0
+	}
+
+	data := feedModel{
+		Feeds: accounts,
+	}
+	for i := 0; i < total/feedsPerPage+1; i++ {
+		pl := pageLink{
+			Display: i + 1,
+		}
+		if i == pageIx {
+			pl.Class = "selected"
+		}
+		if i != 0 {
+			pl.Query = fmt.Sprintf("?page=%d", i)
+		}
+		data.Pages = append(data.Pages, pl)
+	}
+	for _, a := range data.Feeds {
+		a.Name = strings.TrimPrefix(a.Name, "🦜 ")
+	}
+
 	t, model := hg.mustGetPageTemplate("feeds")
 	model.LnkFeedsClass = "selected"
-	model.Data = feedModel{FeedCount: 42}
+	model.Data = &data
+
+	w.Header().Set("X-Robots-Tag", "noindex")
 	t.ExecuteTemplate(w, "index.tmpl", model)
 }

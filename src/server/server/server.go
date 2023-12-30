@@ -79,6 +79,8 @@ func noCacheMW(next http.Handler) http.Handler {
 
 func handleStatic(logger shared.ILogger, w http.ResponseWriter, r *http.Request) {
 
+	// TODO: pretty 404 and error
+
 	logNonOK := func(code int) {
 		query := ""
 		if r.URL.RawQuery != "" {

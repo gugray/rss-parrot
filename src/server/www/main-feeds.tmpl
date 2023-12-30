@@ -1,6 +1,28 @@
 {{define "main"}}
-  <h2>Feeds followed by the Parrot</h2>
-  <p>More recently requested feeds are shown first.</p>
-  <p>There are {{ .Data.FeedCount }} feeds in all.</p>
+  <h2>Feeds watched by the Parrot</h2>
+  <p><i>More recently requested feeds are shown first</i></p>
+  {{range $feed := .Data.Feeds}}
+    <article class="feed">
+      <div>
+        <h3>{{$feed.FeedUrl}}</h3>
+        {{- if ($feed.SiteUrl | isNonEmptyString) }}
+        <span>[<a href="{{$feed.SiteUrl}}">visit</a>]</span>
+        {{- end -}}
+      </div>
+      <p class="info">
+        Parroting since {{$feed.CreatedAt | prettyDate}} as
+        <a href="{{$feed.Handle | profileUrl}}">@{{$feed.Handle}}</a>
+      </p>
+      <p class="info">
+        Last posted: {{$feed.FeedLastUpdated | prettyDate}}
+      </p>
+      <p class="title">{{$feed.Name}}</p>
+    </article>
+  {{end}}
+  <nav class="pager">
+  {{range $page := .Data.Pages}}
+    <a href="/web/feeds{{$page.Query}}" class="{{$page.Class}}">{{$page.Display}}</a>
+  {{end}}
+  </nav>
   <div class="bottom-spacer"></div>
 {{end}}

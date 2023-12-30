@@ -72,7 +72,7 @@ func (idb *IdBuilder) SharedInbox() string {
 }
 
 func (idb *IdBuilder) UserProfile(user string) string {
-	return fmt.Sprintf("https://%s/@%s", idb.Host, user)
+	return fmt.Sprintf("https://%s/web/feeds/%s", idb.Host, user)
 }
 
 func (idb *IdBuilder) UserUrl(user string) string {

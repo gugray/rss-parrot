@@ -23,6 +23,7 @@ type IRepo interface {
 	DoesAccountExist(user string) (bool, error)
 	GetPrivKey(user string) (string, error)
 	GetAccount(user string) (*Account, error)
+	GetAccountsPage(offset, limit int) ([]*Account, int, error)
 	GetTootCount(user string) (uint, error)
 	AddToot(accountId int, toot *Toot) error
 	GetFeedLastUpdated(accountId int) (time.Time, error)
@@ -218,6 +219,41 @@ func (repo *Repo) getAccount(user string) (*Account, error) {
 		}
 	}
 	return &res, nil
+}
+
+func (repo *Repo) GetAccountsPage(offset, limit int) ([]*Account, int, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
+	var res []*Account
+	var total int
+	var err error
+
+	row := repo.db.QueryRow(`SELECT COUNT(*) FROM accounts WHERE approve_status>-100 AND feed_url<>''`)
+	if err = row.Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query := `SELECT id, created_at, approve_status, user_url, handle, name, summary, profile_image_url, site_url, feed_url,
+        feed_last_updated, next_check_due, pubkey
+		FROM accounts WHERE approve_status>-100 AND feed_url<>'' ORDER BY ID DESC LIMIT ? OFFSET ?`
+	rows, err := repo.db.Query(query, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		a := Account{}
+		err = rows.Scan(&a.Id, &a.CreatedAt, &a.ApproveStatus, &a.UserUrl, &a.Handle, &a.Name, &a.Summary,
+			&a.ProfileImageUrl, &a.SiteUrl, &a.FeedUrl, &a.FeedLastUpdated, &a.NextCheckDue, &a.PubKey)
+		if err = rows.Err(); err != nil {
+			return nil, 0, err
+		}
+		res = append(res, &a)
+	}
+	return res, total, nil
 }
 
 func (repo *Repo) GetPrivKey(user string) (string, error) {
