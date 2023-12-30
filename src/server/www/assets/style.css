@@ -68,7 +68,7 @@ header nav a {
   margin-right: 20px; margin-bottom: 3px;
 }
 header nav a:last-of-type { margin-right: 0; }
-header nav a:hover { border-bottom-color: var(--clrLink); text-decoration: none; }
+header nav a:hover, header nav a.selected { border-bottom-color: var(--clrLink); text-decoration: none; }
 
 .bottom-spacer { height: 64px; }
 .inline-icon { width: 24px; height: 24px; vertical-align: bottom; }

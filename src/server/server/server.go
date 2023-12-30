@@ -11,15 +11,14 @@ import (
 	"strings"
 )
 
-const assetsDir = "/assets/"
+const assetsDir = "/assets"
 const strCacheControlHdr = "Cache-Control"
-const strCacheControlNoChacheVal = "max-age=31536000, immutable"
 
 var staticFS = http.FileServer(http.Dir("./www/"))
 
 func NewHTTPServer(cfg *shared.Config, logger shared.ILogger, lc fx.Lifecycle, router *mux.Router) *http.Server {
 	addStr := ":" + strconv.FormatUint(uint64(cfg.ServicePort), 10)
-	srv := &http.Server{Addr: addStr, Handler: router}
+	srv := &http.Server{Addr: addStr, Handler: trimSlashHandler(router)}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			listener, err := net.Listen("tcp", srv.Addr)
@@ -38,6 +37,15 @@ func NewHTTPServer(cfg *shared.Config, logger shared.ILogger, lc fx.Lifecycle, r
 	return srv
 }
 
+func trimSlashHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, assetsDir) {
+			r.URL.Path = strings.TrimSuffix(r.URL.Path, "/")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
 	router := mux.NewRouter()
 	for _, group := range groups {
@@ -54,7 +62,7 @@ func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
 		}
 	}
 	// Static files with error logging
-	router.PathPrefix("/assets").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.PathPrefix(assetsDir).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handleStatic(logger, w, r)
 	})
 	return router
@@ -62,7 +70,9 @@ func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
 
 func noCacheMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(strCacheControlHdr, strCacheControlNoChacheVal)
+		w.Header().Set(strCacheControlHdr, "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -97,6 +107,6 @@ type staticFileResponseWriter struct {
 
 func (lrw *staticFileResponseWriter) WriteHeader(code int) {
 	lrw.statusCode = code
-	lrw.ResponseWriter.Header().Set(strCacheControlHdr, strCacheControlNoChacheVal)
+	lrw.ResponseWriter.Header().Set(strCacheControlHdr, "max-age=31536000, immutable")
 	lrw.ResponseWriter.WriteHeader(code)
 }

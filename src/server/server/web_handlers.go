@@ -45,6 +45,7 @@ func (hg *webHandlerGroup) Prefix() string {
 func (hg *webHandlerGroup) GroupDefs() []handlerDef {
 	return []handlerDef{
 		{"GET", "/feeds", func(w http.ResponseWriter, r *http.Request) { hg.getFeeds(w, r) }},
+		{"GET", "/about", func(w http.ResponseWriter, r *http.Request) { hg.getAbout(w, r) }},
 		{"GET", rootPlacholder, func(w http.ResponseWriter, r *http.Request) { hg.getRoot(w, r) }},
 	}
 }
@@ -74,13 +75,16 @@ func (hg *webHandlerGroup) parsePageTemplate(mainName string) (*template.Templat
 	t := template.New("master")
 	var err error
 	var tmplFiles []string
+	foundMain := false
 	if tmplFiles, err = filepath.Glob(tmplPathPrefx + "*.tmpl"); err != nil {
 		return nil, err
 	}
 	for _, fn := range tmplFiles {
 		include := true
 		if strings.HasPrefix(fn, tmplPathPrefx+"main-") {
-			if fn != tmplPathPrefx+"main-"+mainName+".tmpl" {
+			if fn == tmplPathPrefx+"main-"+mainName+".tmpl" {
+				foundMain = true
+			} else {
 				include = false
 			}
 		}
@@ -90,6 +94,10 @@ func (hg *webHandlerGroup) parsePageTemplate(mainName string) (*template.Templat
 		if _, err = t.ParseFiles(fn); err != nil {
 			return nil, err
 		}
+	}
+	if !foundMain {
+		err = fmt.Errorf("did not find 'main' template for %s", mainName)
+		return nil, err
 	}
 	return t, nil
 }
@@ -117,19 +125,34 @@ func (hg *webHandlerGroup) mustGetPageTemplate(mainName string) (*template.Templ
 }
 
 type baseModel struct {
-	Timestamp string
-	Version   string
-	Data      any
+	Timestamp     string
+	Version       string
+	LnkFeedsClass string
+	LnkAboutClass string
+	Data          any
 }
 
 func (hg *webHandlerGroup) getRoot(w http.ResponseWriter, r *http.Request) {
 
 	t, model := hg.mustGetPageTemplate("root")
 	t.ExecuteTemplate(w, "index.tmpl", model)
-	//_, _ = fmt.Fprintln(w, "This is the root of all goodness.")
+}
+
+func (hg *webHandlerGroup) getAbout(w http.ResponseWriter, r *http.Request) {
+
+	t, model := hg.mustGetPageTemplate("about")
+	model.LnkAboutClass = "selected"
+	t.ExecuteTemplate(w, "index.tmpl", model)
+}
+
+type feedModel struct {
+	FeedCount int
 }
 
 func (hg *webHandlerGroup) getFeeds(w http.ResponseWriter, r *http.Request) {
 
-	_, _ = fmt.Fprintln(w, "Hello, sailor.")
+	t, model := hg.mustGetPageTemplate("feeds")
+	model.LnkFeedsClass = "selected"
+	model.Data = feedModel{FeedCount: 42}
+	t.ExecuteTemplate(w, "index.tmpl", model)
 }
