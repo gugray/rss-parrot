@@ -24,6 +24,7 @@ type Config struct {
 	DbFile             string         `json:"db_file"`
 	CachePageTemplates bool           `json:"cache_page_templates"`
 	UpdateSchedule     UpdateSchedule `json:"update_schedule"`
+	FallbackProfilePic string         `json:"fallback_profile_pic"`
 	Birb               *UserInfo      `json:"birb"`
 }
 

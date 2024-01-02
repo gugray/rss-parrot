@@ -137,6 +137,9 @@ func (udir *userDirectory) fillFeedUserInfo(ui *dto.UserInfo, acct *dal.Account)
 		Type: "Image",
 		Url:  acct.HeaderImageUrl,
 	}
+	if ui.Icon.Url == "" {
+		ui.Icon.Url = udir.cfg.FallbackProfilePic
+	}
 }
 
 func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
