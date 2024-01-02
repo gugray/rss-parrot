@@ -24,8 +24,9 @@ type IRepo interface {
 	GetPrivKey(user string) (string, error)
 	GetAccount(user string) (*Account, error)
 	GetAccountsPage(offset, limit int) ([]*Account, int, error)
-	GetTootCount(user string) (uint, error)
 	AddToot(accountId int, toot *Toot) error
+	GetPostCount(user string) (uint, error)
+	GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, error)
 	GetFeedLastUpdated(accountId int) (time.Time, error)
 	UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error
 	AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error)
@@ -287,21 +288,6 @@ func (repo *Repo) SetPrivKey(user, privKey string) error {
 	return nil
 }
 
-func (repo *Repo) GetTootCount(user string) (uint, error) {
-
-	repo.muDb.RLock()
-	defer repo.muDb.RUnlock()
-
-	row := repo.db.QueryRow(`SELECT COUNT(*) FROM toots JOIN accounts
-		ON toots.account_id=accounts.id AND accounts.handle=?`, user)
-	var err error
-	var count int
-	if err = row.Scan(&count); err != nil {
-		return 0, err
-	}
-	return uint(count), nil
-}
-
 func (repo *Repo) AddToot(accountId int, toot *Toot) error {
 
 	repo.muDb.Lock()
@@ -314,6 +300,48 @@ func (repo *Repo) AddToot(accountId int, toot *Toot) error {
 		return err
 	}
 	return nil
+}
+
+func (repo *Repo) GetPostCount(user string) (uint, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
+	row := repo.db.QueryRow(`SELECT COUNT(*) FROM feed_posts JOIN accounts
+		ON feed_posts.account_id=accounts.id AND accounts.handle=?`, user)
+	var err error
+	var count int
+	if err = row.Scan(&count); err != nil {
+		return 0, err
+	}
+	return uint(count), nil
+}
+
+func (repo *Repo) GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
+	var res []*FeedPost
+	var err error
+
+	query := `SELECT post_guid_hash, post_time, link, title, description
+		FROM feed_posts WHERE account_id=? ORDER BY post_time DESC LIMIT ? OFFSET ?`
+	rows, err := repo.db.Query(query, accountId, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		p := FeedPost{}
+		err = rows.Scan(&p.PostGuidHash, &p.PostTime, &p.Link, &p.Title, &p.Description)
+		if err = rows.Err(); err != nil {
+			return nil, err
+		}
+		res = append(res, &p)
+	}
+	return res, nil
 }
 
 func (repo *Repo) GetApprovedFollowerCount(user string) (uint, error) {
@@ -501,7 +529,7 @@ func (repo *Repo) AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, e
 	_, err = repo.db.Exec(`INSERT INTO feed_posts
     	(account_id, post_guid_hash, post_time, link, title, description)
 		VALUES (?, ?, ?, ?, ?, ?)`,
-		accountId, post.PostGuidHash, post.PostTime, post.Link, post.Title, post.Desription)
+		accountId, post.PostGuidHash, post.PostTime, post.Link, post.Title, post.Description)
 
 	if err == nil {
 		isNew = true

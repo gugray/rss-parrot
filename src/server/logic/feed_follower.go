@@ -315,7 +315,7 @@ func (ff *feedFollower) storePostIfNew(
 		PostTime:     postTime,
 		Link:         itm.Link,
 		Title:        plainTitle,
-		Desription:   plainDescription,
+		Description:  plainDescription,
 	})
 	if err != nil {
 		return

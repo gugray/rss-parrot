@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 const ActivityPublic = "https://www.w3.org/ns/activitystreams#Public"
@@ -26,6 +27,23 @@ func MakeFullMoniker(hostName, handle string) string {
 
 func GetNameWithParrot(name string) string {
 	return "🦜 " + name
+}
+
+func TruncateWithEllipsis(text string, maxLen int) string {
+	// https://stackoverflow.com/a/73939904/7479498
+	lastSpaceIx := maxLen
+	len := 0
+	for i, r := range text {
+		if unicode.IsSpace(r) {
+			lastSpaceIx = i
+		}
+		len++
+		if len > maxLen {
+			return text[:lastSpaceIx] + "…"
+		}
+	}
+	// If here, string is shorter or equal to maxLen
+	return text
 }
 
 func GetHandleFromUrl(url string) string {

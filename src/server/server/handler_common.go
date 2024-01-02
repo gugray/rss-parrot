@@ -6,16 +6,19 @@ import (
 	"io"
 	"net/http"
 	"rss_parrot/shared"
+	"strings"
 )
 
 const (
-	apiKeyHeader      = "X-API-KEY"
-	rootPlacholder    = "*root*"
-	internalErrorStr  = "500 Internal Server Error"
-	badRequestStr     = "400 Invalid Request"
-	notFoundStr       = "404 Not Found"
-	dirListNotAllowed = "403 Directory Listing Not Allowed"
-	badApiKeyStr      = "401 Missing or Invalid API Key"
+	wwwPathPrefx       = "www/"
+	apiKeyHeader       = "X-API-KEY"
+	rootPlacholder     = "*root*"
+	notFoundPlacholder = "*404*"
+	internalErrorStr   = "500 Internal Server Error"
+	badRequestStr      = "400 Invalid Request"
+	notFoundStr        = "404 Not Found"
+	dirListNotAllowed  = "403 Directory Listing Not Allowed"
+	badApiKeyStr       = "401 Missing or Invalid API Key"
 )
 
 // Defines a single HTTP handler (endpoint)
@@ -36,6 +39,14 @@ func emptyMW(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(w, r)
 	})
+}
+
+func acceptsJson(r *http.Request) bool {
+	accept := r.Header.Get("Accept")
+	if strings.HasPrefix(accept, "application/") && strings.Contains(accept, "json") {
+		return true
+	}
+	return false
 }
 
 // Returns the JSON serialized object as the response body; handles errors.

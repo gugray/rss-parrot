@@ -1,0 +1,25 @@
+{{define "main"}}
+  <h2 class="feed-name">{{ .Data.Name }}</h2>
+  <p class="feed-handle">{{ .Data.Handle }}</p>
+  <section class="feed-bio">{{ .Data.Bio }}</section>
+  <section class="feed-stats">
+    <p><span class="label">Site URL: </span><a href="{{ .Data.SiteUrl }}">{{.Data.SiteUrlNoSchema}}</a></p>
+    <p><span class="label">Feed URL: </span><a href="{{ .Data.FeedUrl }}">{{.Data.FeedUrlNoSchema}}</a></p>
+    <p><span class="label">Posts: </span><span class="value">{{ .Data.PostCount }}</span></p>
+    <p><span class="label">Followers: </span><span class="value">{{ .Data.FollowerCount }}</span></p>
+  </section>
+  {{range $post := .Data.Posts}}
+    <article class="post">
+      <p class="title">{{$post.Title}}</p>
+      <p class="link"><a href="{{$post.Link}}">{{$post.Link}}</a></p>
+      <p class="published">Published: {{$post.PostTime | prettyDateTime}}</p>
+      <p class="description">{{$post.Description}}</p>
+    </article>
+  {{end}}
+  {{- if .Data.NotShownPosts }}
+  <p class="omitted-posts">
+    ~ {{.Data.NotShownPosts}} additional posts are not shown ~
+  </p>
+  {{- end -}}
+  <div class="bottom-spacer"></div>
+{{end}}

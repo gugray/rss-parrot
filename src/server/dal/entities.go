@@ -30,7 +30,7 @@ type FeedPost struct {
 	PostTime     time.Time
 	Link         string
 	Title        string
-	Desription   string
+	Description  string
 }
 
 type Toot struct {

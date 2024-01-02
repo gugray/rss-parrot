@@ -20,7 +20,7 @@
 }
 
 /* Global overrides */
-* { box-sizing: border-box; }
+* { box-sizing: border-box; overflow-wrap: anywhere; }
 a { color: var(--clrLink); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
@@ -70,6 +70,8 @@ header nav a {
 header nav a:last-of-type { margin-right: 0; }
 header nav a:hover, header nav a.selected { border-bottom-color: var(--clrLink); text-decoration: none; }
 
+h2 { margin: 22px 0; }
+
 .bottom-spacer { height: 64px; }
 .inline-icon { width: 24px; height: 24px; vertical-align: bottom; }
 .circled-numbers { display: flex; }
@@ -99,6 +101,21 @@ article.feed * { margin: 0; }
 article.feed h3 { font-size: var(--fntSizeBase); font-weight: bold; display: inline-block; }
 article.feed div span { display: inline-block; }
 article.feed p.info { font-size: 80%; }
+
+h2.feed-name { margin-bottom: 0; }
+p.feed-handle { margin: 0 0 22px 0; }
+section.feed-bio { border-bottom: 1px dotted var(--clrTextFainter); }
+section.feed-stats { border-bottom: 1px dotted var(--clrTextFainter); padding: 6px 0; }
+section.feed-stats p { margin: 0; }
+section.feed-stats span { display: inline-block; }
+section.feed-stats span.value { font-weight: 600;  }
+section.feed-stats span.label { width: 10em; }
+article.post { margin-top: 36px; }
+article.post p { margin: 0; }
+article.post .title { font-weight: 600; }
+article.post .description { margin-top: 6px; font-style: italic; font-size: 94%; }
+p.omitted-posts { margin: 36px 0; border-top: 1px dotted var(--clrTextFainter); padding-top: 36px; }
+
 
 footer {
   display: flex; justify-content: flex-end; font-size: 15px;

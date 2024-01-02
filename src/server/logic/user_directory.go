@@ -185,7 +185,7 @@ func (udir *userDirectory) GetOutboxSummary(user string) *dto.OrderedListSummary
 	}
 
 	var postCount uint
-	postCount, err = udir.repo.GetTootCount(user) // TODO errors
+	postCount, err = udir.repo.GetPostCount(user) // TODO errors
 
 	resp := dto.OrderedListSummary{
 		Context:    "https://www.w3.org/ns/activitystreams",

@@ -2,20 +2,23 @@ package server
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
 	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
 	"rss_parrot/dal"
 	"rss_parrot/shared"
+	"rss_parrot/texts"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const tmplPathPrefx = "www/"
 const versionFileName = "version.txt"
 const feedsPerPage = 200
+const postsPerPage = 100
+const maxDescriptionLen = 256
 
 var months = []string{
 	"January", "February", "March", "April", "May", "June",
@@ -26,6 +29,8 @@ type webHandlerGroup struct {
 	cfg           *shared.Config
 	logger        shared.ILogger
 	repo          dal.IRepo
+	txt           texts.ITexts
+	idb           shared.IdBuilder
 	version       string
 	timestamp     string
 	pageTemplates map[string]*template.Template
@@ -35,15 +40,18 @@ func NewWebHandlerGroup(
 	cfg *shared.Config,
 	logger shared.ILogger,
 	repo dal.IRepo,
+	txt texts.ITexts,
 ) IHandlerGroup {
 	res := webHandlerGroup{
 		cfg:           cfg,
 		logger:        logger,
 		repo:          repo,
+		txt:           txt,
+		idb:           shared.IdBuilder{cfg.Host},
 		timestamp:     fmt.Sprintf("%d", time.Now().UnixMilli()),
 		pageTemplates: make(map[string]*template.Template),
 	}
-	versionBytes, _ := os.ReadFile(tmplPathPrefx + versionFileName)
+	versionBytes, _ := os.ReadFile(wwwPathPrefx + versionFileName)
 	res.version = string(versionBytes)
 	res.initTemplates()
 	return &res
@@ -55,9 +63,11 @@ func (hg *webHandlerGroup) Prefix() string {
 
 func (hg *webHandlerGroup) GroupDefs() []handlerDef {
 	return []handlerDef{
+		{"GET", "/feeds/{feed}", func(w http.ResponseWriter, r *http.Request) { hg.getOneFeed(w, r) }},
 		{"GET", "/feeds", func(w http.ResponseWriter, r *http.Request) { hg.getFeeds(w, r) }},
 		{"GET", "/about", func(w http.ResponseWriter, r *http.Request) { hg.getAbout(w, r) }},
 		{"GET", rootPlacholder, func(w http.ResponseWriter, r *http.Request) { hg.getRoot(w, r) }},
+		{"GET", notFoundPlacholder, func(w http.ResponseWriter, r *http.Request) { hg.send404(w, r) }},
 	}
 }
 
@@ -66,13 +76,13 @@ func (hg *webHandlerGroup) AuthMW() func(next http.Handler) http.Handler {
 }
 
 func (hg *webHandlerGroup) initTemplates() {
-	mainFiles, err := filepath.Glob(tmplPathPrefx + "main-*.tmpl")
+	mainFiles, err := filepath.Glob(wwwPathPrefx + "main-*.tmpl")
 	if err != nil {
 		hg.logger.Errorf("Failed to list main-*.tmpl: %v", err)
 		panic(err)
 	}
 	for _, fn := range mainFiles {
-		mainName := strings.TrimPrefix(fn, tmplPathPrefx+"main-")
+		mainName := strings.TrimPrefix(fn, wwwPathPrefx+"main-")
 		mainName = strings.TrimSuffix(mainName, ".tmpl")
 		var t *template.Template
 		if t, err = hg.parsePageTemplate(mainName); err != nil {
@@ -86,19 +96,18 @@ func (hg *webHandlerGroup) parsePageTemplate(mainName string) (*template.Templat
 
 	t := template.New("master")
 
-	idb := shared.IdBuilder{hg.cfg.Host}
-	addTemplateFuncs(t, &idb)
+	hg.addTemplateFuncs(t)
 
 	var err error
 	var tmplFiles []string
 	foundMain := false
-	if tmplFiles, err = filepath.Glob(tmplPathPrefx + "*.tmpl"); err != nil {
+	if tmplFiles, err = filepath.Glob(wwwPathPrefx + "*.tmpl"); err != nil {
 		return nil, err
 	}
 	for _, fn := range tmplFiles {
 		include := true
-		if strings.HasPrefix(fn, tmplPathPrefx+"main-") {
-			if fn == tmplPathPrefx+"main-"+mainName+".tmpl" {
+		if strings.HasPrefix(fn, wwwPathPrefx+"main-") {
+			if fn == wwwPathPrefx+"main-"+mainName+".tmpl" {
 				foundMain = true
 			} else {
 				include = false
@@ -140,19 +149,23 @@ func (hg *webHandlerGroup) mustGetPageTemplate(mainName string) (*template.Templ
 	}
 }
 
-func addTemplateFuncs(t *template.Template, idb *shared.IdBuilder) {
+func (hg *webHandlerGroup) addTemplateFuncs(t *template.Template) {
 
 	profileUrl := func(handle string) string {
-		return idb.UserProfile(handle)
+		return hg.idb.UserProfile(handle)
 	}
-
 	prettyDate := func(t time.Time) string {
 		return fmt.Sprintf("%s %d, %d", months[t.Month()-1], t.Day(), t.Year())
+	}
+	prettyDateTime := func(t time.Time) string {
+		dateStr := prettyDate(t)
+		return fmt.Sprintf("%s %02d:%02d", dateStr, t.Hour(), t.Minute())
 	}
 
 	t.Funcs(template.FuncMap{
 		"isNonEmptyString": func(s string) bool { return s != "" },
 		"prettyDate":       prettyDate,
+		"prettyDateTime":   prettyDateTime,
 		"profileUrl":       profileUrl,
 	})
 }
@@ -171,6 +184,30 @@ func (hg *webHandlerGroup) getRoot(w http.ResponseWriter, r *http.Request) {
 	t.ExecuteTemplate(w, "index.tmpl", model)
 }
 
+func (hg *webHandlerGroup) send404(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "GET" || acceptsJson(r) {
+		writeErrorResponse(w, notFoundStr, http.StatusNotFound)
+		return
+	}
+
+	t, model := hg.mustGetPageTemplate("404")
+	w.WriteHeader(http.StatusNotFound)
+	w.Header().Set("X-Robots-Tag", "noindex")
+	t.ExecuteTemplate(w, "index.tmpl", model)
+}
+
+func (hg *webHandlerGroup) send500(w http.ResponseWriter, r *http.Request) {
+
+	t, model := hg.mustGetPageTemplate("500")
+	w.WriteHeader(http.StatusNotFound)
+	w.Header().Set("X-Robots-Tag", "noindex")
+	t.ExecuteTemplate(w, "index.tmpl", model)
+}
+
 func (hg *webHandlerGroup) getAbout(w http.ResponseWriter, r *http.Request) {
 
 	t, model := hg.mustGetPageTemplate("about")
@@ -178,7 +215,7 @@ func (hg *webHandlerGroup) getAbout(w http.ResponseWriter, r *http.Request) {
 	t.ExecuteTemplate(w, "index.tmpl", model)
 }
 
-type feedModel struct {
+type feedsModel struct {
 	Feeds []*dal.Account
 	Pages []pageLink
 }
@@ -201,13 +238,14 @@ func (hg *webHandlerGroup) getFeeds(w http.ResponseWriter, r *http.Request) {
 	var accounts []*dal.Account
 	var total int
 	accounts, total, err = hg.repo.GetAccountsPage(pageIx*feedsPerPage, feedsPerPage)
-	// TODO: bespoke error if query failed
+
 	if err != nil {
-		accounts = make([]*dal.Account, 0)
-		total = 0
+		hg.logger.Errorf("Error retrieving feeds %v", err)
+		hg.send500(w, r)
+		return
 	}
 
-	// Remove built-in birb
+	// Remove birb's built-in account
 	total -= 1
 	nonBuiltInAccounts := make([]*dal.Account, 0, len(accounts))
 	for _, acct := range accounts {
@@ -217,7 +255,7 @@ func (hg *webHandlerGroup) getFeeds(w http.ResponseWriter, r *http.Request) {
 		nonBuiltInAccounts = append(nonBuiltInAccounts, acct)
 	}
 
-	data := feedModel{
+	data := feedsModel{
 		Feeds: nonBuiltInAccounts,
 	}
 	for i := 0; i < total/feedsPerPage+1; i++ {
@@ -236,6 +274,111 @@ func (hg *webHandlerGroup) getFeeds(w http.ResponseWriter, r *http.Request) {
 	t, model := hg.mustGetPageTemplate("feeds")
 	model.LnkFeedsClass = "selected"
 	model.Data = &data
+
+	w.Header().Set("X-Robots-Tag", "noindex")
+	t.ExecuteTemplate(w, "index.tmpl", model)
+}
+
+type oneFeedModel struct {
+	Handle          string
+	Name            string
+	Bio             template.HTML
+	SiteUrl         string
+	SiteUrlNoSchema string
+	FeedUrl         string
+	FeedUrlNoSchema string
+	FollowerCount   uint
+	PostCount       uint
+	Posts           []*dal.FeedPost
+	NotShownPosts   uint
+}
+
+func (hg *webHandlerGroup) loadFeedData(acct *dal.Account) *oneFeedModel {
+
+	var err error
+
+	bio := hg.txt.WithVals("acct_bio.html", map[string]string{
+		"siteUrl":     hg.idb.SiteUrl(),
+		"description": acct.FeedSummary,
+	})
+	var followerCount, postCount uint
+	if followerCount, err = hg.repo.GetApprovedFollowerCount(acct.Handle); err != nil {
+		hg.logger.Errorf("Error retrieving follower count for %s: %v", acct.Handle, err)
+		return nil
+	}
+	if postCount, err = hg.repo.GetPostCount(acct.Handle); err != nil {
+		hg.logger.Errorf("Error retrieving post count for %s: %v", acct.Handle, err)
+		return nil
+	}
+
+	data := oneFeedModel{
+		Handle:        shared.MakeFullMoniker(hg.cfg.Host, acct.Handle),
+		Name:          shared.GetNameWithParrot(acct.FeedName),
+		Bio:           template.HTML(bio),
+		SiteUrl:       acct.SiteUrl,
+		FeedUrl:       acct.FeedUrl,
+		FollowerCount: followerCount,
+		PostCount:     postCount,
+	}
+	data.FeedUrlNoSchema = strings.TrimPrefix(data.FeedUrl, "https://")
+	data.FeedUrlNoSchema = strings.TrimPrefix(data.FeedUrlNoSchema, "http://")
+	data.SiteUrlNoSchema = strings.TrimPrefix(data.SiteUrl, "https://")
+	data.SiteUrlNoSchema = strings.TrimPrefix(data.SiteUrlNoSchema, "http://")
+
+	data.Posts, err = hg.repo.GetPostsPage(acct.Id, 0, postsPerPage)
+	if err != nil {
+		hg.logger.Errorf("Error retrieving posts for %s: %v", acct.Handle, err)
+		return nil
+	}
+
+	for _, p := range data.Posts {
+		if len(p.Description) <= maxDescriptionLen {
+			continue
+		}
+		p.Description = shared.TruncateWithEllipsis(p.Description, maxDescriptionLen)
+	}
+
+	if data.PostCount > uint(len(data.Posts)) {
+		data.NotShownPosts = data.PostCount - uint(len(data.Posts))
+	}
+
+	return &data
+}
+
+func (hg *webHandlerGroup) getOneFeed(w http.ResponseWriter, r *http.Request) {
+
+	hg.logger.Infof("Handling user GET: %s", r.URL.Path)
+	feedName := mux.Vars(r)["feed"]
+	feedName = strings.ToLower(feedName)
+
+	if feedName == hg.cfg.Birb.User {
+		hg.logger.Infof("Requesting profile of '%s'; redirecting to root", hg.cfg.Birb.User)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	acct, err := hg.repo.GetAccount(feedName)
+	if acct == nil {
+		if err == nil {
+			hg.logger.Infof("Feed '%s' doesn't exist; returning a 404", feedName)
+			hg.send404(w, r)
+			return
+		} else {
+			hg.logger.Errorf("Error retrieving feed %s: %v", feedName, err)
+			hg.send500(w, r)
+			return
+		}
+	}
+
+	data := hg.loadFeedData(acct)
+	if data == nil {
+		hg.send500(w, r)
+		return
+	}
+
+	t, model := hg.mustGetPageTemplate("one-feed")
+	model.LnkFeedsClass = "selected"
+	model.Data = data
 
 	w.Header().Set("X-Robots-Tag", "noindex")
 	t.ExecuteTemplate(w, "index.tmpl", model)

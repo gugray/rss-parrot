@@ -6,15 +6,16 @@ import (
 	"go.uber.org/fx"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"rss_parrot/shared"
 	"strconv"
 	"strings"
 )
 
 const assetsDir = "/assets"
+const chunkSize = 65536
 const strCacheControlHdr = "Cache-Control"
-
-var staticFS = http.FileServer(http.Dir("./www/"))
 
 func NewHTTPServer(cfg *shared.Config, logger shared.ILogger, lc fx.Lifecycle, router *mux.Router) *http.Server {
 	addStr := ":" + strconv.FormatUint(uint64(cfg.ServicePort), 10)
@@ -47,6 +48,9 @@ func trimSlashHandler(next http.Handler) http.Handler {
 }
 
 func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
+
+	var notFoundHandler func(w http.ResponseWriter, r *http.Request) = nil
+
 	router := mux.NewRouter()
 	for _, group := range groups {
 		subRouter := router.PathPrefix(group.Prefix()).Subrouter()
@@ -56,14 +60,16 @@ func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
 		for _, def := range group.GroupDefs() {
 			if def.pattern == rootPlacholder {
 				router.HandleFunc("/", def.handler).Methods("OPTIONS", def.method)
+			} else if def.pattern == notFoundPlacholder {
+				notFoundHandler = def.handler
 			} else {
 				subRouter.HandleFunc(def.pattern, def.handler).Methods("OPTIONS", def.method)
 			}
 		}
 	}
 	// Static files with error logging
-	router.PathPrefix(assetsDir).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handleStatic(logger, w, r)
+	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleStatic(logger, notFoundHandler, w, r)
 	})
 	return router
 }
@@ -77,38 +83,74 @@ func noCacheMW(next http.Handler) http.Handler {
 	})
 }
 
-func handleStatic(logger shared.ILogger, w http.ResponseWriter, r *http.Request) {
+func handleStatic(logger shared.ILogger,
+	notFoundHandler func(w http.ResponseWriter, r *http.Request),
+	w http.ResponseWriter, r *http.Request,
+) {
 
-	// TODO: pretty 404 and error
-
-	logNonOK := func(code int) {
-		query := ""
-		if r.URL.RawQuery != "" {
-			query += "?" + r.URL.RawQuery
+	return404 := func() {
+		logger.Infof("%s %s returns 404", r.Method, r.URL.Path)
+		if notFoundHandler == nil {
+			http.Error(w, notFoundStr, http.StatusNotFound)
+		} else {
+			notFoundHandler(w, r)
 		}
-		logger.Infof("%s request had status %d: %s%s", r.Method, code, r.URL.Path, query)
 	}
 
-	if r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/") {
-		logNonOK(403)
-		http.Error(w, dirListNotAllowed, 403)
+	w.Header().Set(strCacheControlHdr, "max-age=31536000, immutable")
+
+	if !strings.HasPrefix(r.URL.Path, assetsDir) {
+		return404()
 		return
 	}
 
-	cw := staticFileResponseWriter{w, http.StatusOK}
-	staticFS.ServeHTTP(&cw, r)
-	if cw.statusCode >= 400 {
-		logNonOK(cw.statusCode)
+	fn := filepath.Join(wwwPathPrefx, r.URL.Path)
+	file, err := os.Open(fn)
+	if err != nil {
+		return404()
+		return
 	}
-}
+	defer file.Close()
 
-type staticFileResponseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
+	var fi os.FileInfo
+	fi, err = file.Stat()
+	if err != nil {
+		return404()
+		return
+	}
 
-func (lrw *staticFileResponseWriter) WriteHeader(code int) {
-	lrw.statusCode = code
-	lrw.ResponseWriter.Header().Set(strCacheControlHdr, "max-age=31536000, immutable")
-	lrw.ResponseWriter.WriteHeader(code)
+	headersSent := false
+	writeHeaders := func() {
+		w.Header().Set("Content-Length", strconv.Itoa(int(fi.Size())))
+		w.Header().Set("Last-Modified", fi.ModTime().Format(http.TimeFormat))
+		if strings.HasSuffix(r.URL.Path, ".svg") {
+			w.Header().Set("Content-Type", "image/svg+xml")
+		} else if strings.HasSuffix(r.URL.Path, ".css") {
+			w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		}
+	}
+
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := file.Read(buf)
+		if err != nil {
+			logger.Errorf("Error reading file %s: %v", fn, err)
+			return404()
+			return
+		}
+		if !headersSent {
+			writeHeaders()
+			headersSent = true
+		}
+		if n > 0 {
+			_, err := w.Write(buf[0:n])
+			if err != nil {
+				logger.Errorf("Error writing response: %v", err)
+				return
+			}
+		}
+		if n < chunkSize {
+			break
+		}
+	}
 }
