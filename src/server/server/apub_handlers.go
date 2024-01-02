@@ -9,6 +9,7 @@ import (
 	"rss_parrot/dto"
 	"rss_parrot/logic"
 	"rss_parrot/shared"
+	"strings"
 )
 
 // Groups together the handlers needed to implement an ActivityPub server.
@@ -91,6 +92,14 @@ func (hg *apubHandlerGroup) getUser(w http.ResponseWriter, r *http.Request) {
 
 	hg.logger.Infof("Handling user GET: %s", r.URL.Path)
 	userName := mux.Vars(r)["user"]
+
+	accept := r.Header.Get("Accept")
+	if !strings.HasPrefix(accept, "application/") || !strings.Contains(accept, "json") {
+		idb := shared.IdBuilder{hg.cfg.Host}
+		profileUrl := idb.UserProfile(userName)
+		hg.logger.Infof("No application/json in accept header; redirecting to: '%s'", profileUrl)
+		http.Redirect(w, r, profileUrl, http.StatusSeeOther)
+	}
 
 	userInfo := hg.udir.GetUserInfo(userName)
 

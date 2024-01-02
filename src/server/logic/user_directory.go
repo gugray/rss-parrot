@@ -82,25 +82,61 @@ func (udir *userDirectory) GetWebfinger(user string) *dto.WebfingerResp {
 	}
 	return &resp
 }
-
-func (udir *userDirectory) patchSpecialAccount(acct *dal.Account) (bool, bool) {
-	if acct.Handle == udir.cfg.Birb.User {
-		acct.Name = udir.txt.Get("birb_name.txt")
-		acct.Summary = udir.txt.Get("birb_bio.html")
-		acct.PubKey = udir.cfg.Birb.PubKey
-		acct.ProfileImageUrl = udir.cfg.Birb.ProfilePic
-		acct.HeaderImageUrl = udir.cfg.Birb.HeaderPic
-		return true, udir.cfg.Birb.ManuallyApprovesFollows
-	}
-	return false, false
+func (udir *userDirectory) getWebsiteAttachment(url string) string {
+	justUrl := strings.TrimPrefix(url, "https://")
+	justUrl = strings.TrimPrefix(url, "http://")
+	return fmt.Sprintf(websiteLinkTemplate, url, justUrl)
 }
 
-func (udir *userDirectory) getWebsiteAttachment(acct *dal.Account) string {
-	if acct.Handle == udir.cfg.Birb.User {
-		return fmt.Sprintf(websiteLinkTemplate, "https://"+udir.cfg.Host, udir.cfg.Host)
+func (udir *userDirectory) fillBirbUserInfo(ui *dto.UserInfo) {
+	ui.Name = udir.txt.Get("birb_name.txt")
+	ui.Summary = udir.txt.Get("birb_bio.html")
+	ui.ManuallyApproves = udir.cfg.Birb.ManuallyApprovesFollows
+	ui.PublicKey = dto.PublicKey{
+		Id:           udir.idb.UserKeyId(udir.cfg.Birb.User),
+		Owner:        ui.Id,
+		PublicKeyPem: udir.cfg.Birb.PubKey,
 	}
-	justUrl := strings.TrimPrefix(acct.SiteUrl, "https://")
-	return fmt.Sprintf(websiteLinkTemplate, acct.SiteUrl, justUrl)
+	ui.Attachments = append(ui.Attachments, dto.Attachment{
+		Type:  "PropertyValue",
+		Name:  "Website",
+		Value: udir.getWebsiteAttachment(udir.idb.SiteUrl()),
+	})
+	ui.Icon = dto.Image{
+		Type: "Image",
+		Url:  udir.cfg.Birb.ProfilePic,
+	}
+	ui.Image = dto.Image{
+		Type: "Image",
+		Url:  udir.cfg.Birb.HeaderPic,
+	}
+}
+
+func (udir *userDirectory) fillFeedUserInfo(ui *dto.UserInfo, acct *dal.Account) {
+	ui.Name = shared.GetNameWithParrot(acct.FeedName)
+	ui.Summary = udir.txt.WithVals("acct_bio.html", map[string]string{
+		"siteUrl":     udir.idb.SiteUrl(),
+		"description": acct.FeedSummary,
+	})
+	ui.ManuallyApproves = false
+	ui.PublicKey = dto.PublicKey{
+		Id:           udir.idb.UserKeyId(acct.Handle),
+		Owner:        ui.Id,
+		PublicKeyPem: acct.PubKey,
+	}
+	ui.Attachments = append(ui.Attachments, dto.Attachment{
+		Type:  "PropertyValue",
+		Name:  "Website",
+		Value: udir.getWebsiteAttachment(acct.SiteUrl),
+	})
+	ui.Icon = dto.Image{
+		Type: "Image",
+		Url:  acct.ProfileImageUrl,
+	}
+	ui.Image = dto.Image{
+		Type: "Image",
+		Url:  acct.HeaderImageUrl,
+	}
 }
 
 func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
@@ -111,7 +147,6 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 	if err != nil || acct == nil {
 		return nil // TODO errors
 	}
-	_, manuallyApproves := udir.patchSpecialAccount(acct)
 
 	resp := dto.UserInfo{
 		Context: []string{
@@ -121,36 +156,21 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 		Id:                userUrl,
 		Type:              "Service",
 		PreferredUserName: user,
-		Name:              acct.Name,
-		Summary:           acct.Summary,
-		ManuallyApproves:  manuallyApproves,
 		Published:         acct.CreatedAt.Format(time.RFC3339),
 		Inbox:             udir.idb.UserInbox(user),
 		Outbox:            udir.idb.UserOutbox(user),
 		Followers:         udir.idb.UserFollowers(user),
 		Following:         udir.idb.UserFollowing(user),
 		Endpoints:         dto.UserEndpoints{SharedInbox: udir.idb.SharedInbox()},
-		PublicKey: dto.PublicKey{
-			Id:           udir.idb.UserKeyId(user),
-			Owner:        userUrl,
-			PublicKeyPem: acct.PubKey,
-		},
-		Attachments: []dto.Attachment{
-			{
-				Type:  "PropertyValue",
-				Name:  "Website",
-				Value: udir.getWebsiteAttachment(acct),
-			},
-		},
-		Icon: dto.Image{
-			Type: "Image",
-			Url:  acct.ProfileImageUrl,
-		},
-		Image: dto.Image{
-			Type: "Image",
-			Url:  acct.HeaderImageUrl,
-		},
+		Attachments:       []dto.Attachment{},
 	}
+
+	if user == udir.cfg.Birb.User {
+		udir.fillBirbUserInfo(&resp)
+	} else {
+		udir.fillFeedUserInfo(&resp, acct)
+	}
+
 	return &resp
 }
 

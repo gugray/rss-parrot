@@ -101,11 +101,10 @@ func (hg *apiHandlerGroup) postFeeds(w http.ResponseWriter, r *http.Request) {
 	}
 	res := dto.Feed{
 		CreatedAt:       acct.CreatedAt,
-		ApproveStatus:   acct.ApproveStatus,
 		UserUrl:         acct.UserUrl,
 		Handle:          acct.Handle,
-		Name:            acct.Name,
-		Summary:         acct.Summary,
+		FeedName:        acct.FeedName,
+		FeedSummary:     acct.FeedSummary,
 		ProfileImageUrl: acct.ProfileImageUrl,
 		SiteUrl:         acct.SiteUrl,
 		FeedUrl:         acct.FeedUrl,

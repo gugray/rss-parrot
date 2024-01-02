@@ -342,7 +342,7 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 	msg := ib.txt.WithVals("reply_got_feed.html", map[string]string{
 		"userHandle":     senderInfo.PreferredUserName,
 		"userUrl":        senderInfo.Id,
-		"accountName":    acct.Name,
+		"accountName":    acct.FeedName,
 		"accountMoniker": "@" + acct.Handle,
 		"accountUrl":     accountUrl,
 	})

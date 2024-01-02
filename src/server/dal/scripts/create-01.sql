@@ -13,11 +13,10 @@ CREATE TABLE accounts
 (
     id                INTEGER PRIMARY KEY NOT NULL,
     created_at        DATETIME            NOT NULL,
-    approve_status    INTEGER             NOT NULL DEFAULT 0,
     user_url          TEXT                NOT NULL,
     handle            TEXT                NOT NULL,
-    name              TEXT                NOT NULL DEFAULT (''),
-    summary           TEXT                NOT NULL DEFAULT (''),
+    feed_name         TEXT                NOT NULL DEFAULT (''),
+    feed_summary      TEXT                NOT NULL DEFAULT (''),
     profile_image_url TEXT                NOT NULL DEFAULT (''),
     site_url          TEXT                NOT NULL DEFAULT (''),
     feed_url          TEXT                NOT NULL DEFAULT (''),

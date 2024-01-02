@@ -4,11 +4,10 @@ import "time"
 
 type Feed struct {
 	CreatedAt       time.Time `json:"created_at"`
-	ApproveStatus   int       `json:"approve_status"`
 	UserUrl         string    `json:"user_url"`
 	Handle          string    `json:"handle"`
-	Name            string    `json:"name"`
-	Summary         string    `json:"summary"`
+	FeedName        string    `json:"feed_name"`
+	FeedSummary     string    `json:"feed_summary"`
 	ProfileImageUrl string    `json:"profile_image_url"`
 	SiteUrl         string    `json:"site_url"`
 	FeedUrl         string    `json:"feed_url"`

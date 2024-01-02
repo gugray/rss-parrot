@@ -85,6 +85,10 @@ func (m *messenger) EnqueueBroadcast(user string, statusId string, tootedAt time
 		}
 	}
 
+	if len(inboxes) == 0 {
+		return nil
+	}
+
 	// Create a queue item for each inbox
 	for inboxUrl := range inboxes {
 		err = m.repo.AddTootQueueItem(&dal.TootQueueItem{

@@ -207,8 +207,18 @@ func (hg *webHandlerGroup) getFeeds(w http.ResponseWriter, r *http.Request) {
 		total = 0
 	}
 
+	// Remove built-in birb
+	total -= 1
+	nonBuiltInAccounts := make([]*dal.Account, 0, len(accounts))
+	for _, acct := range accounts {
+		if acct.Handle == hg.cfg.Birb.User {
+			continue
+		}
+		nonBuiltInAccounts = append(nonBuiltInAccounts, acct)
+	}
+
 	data := feedModel{
-		Feeds: accounts,
+		Feeds: nonBuiltInAccounts,
 	}
 	for i := 0; i < total/feedsPerPage+1; i++ {
 		pl := pageLink{
@@ -221,9 +231,6 @@ func (hg *webHandlerGroup) getFeeds(w http.ResponseWriter, r *http.Request) {
 			pl.Query = fmt.Sprintf("?page=%d", i)
 		}
 		data.Pages = append(data.Pages, pl)
-	}
-	for _, a := range data.Feeds {
-		a.Name = strings.TrimPrefix(a.Name, "🦜 ")
 	}
 
 	t, model := hg.mustGetPageTemplate("feeds")

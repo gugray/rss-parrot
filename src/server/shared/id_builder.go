@@ -46,7 +46,7 @@ func GetHandleFromUrl(url string) string {
 	res := buf.String()
 
 	for {
-		merged := strings.ReplaceAll(res, ".", ".")
+		merged := strings.ReplaceAll(res, "..", ".")
 		if len(merged) == len(res) {
 			break
 		}

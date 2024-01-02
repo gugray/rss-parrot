@@ -7,13 +7,12 @@ import (
 type Account struct {
 	Id              int
 	CreatedAt       time.Time
-	ApproveStatus   int    // <=-100: banned; 1: has been manually approved before
-	UserUrl         string // https://rss-parrot.net/u/ludic.mataroa.blog
-	Handle          string // ludic.mataroa.blog
-	Name            string // Ludicity
-	Summary         string // "While I'm deeply sympathetic, the author should be discussing their issues with a therapist rather than spreading this on the internet."
-	SiteUrl         string // https://ludic.mataroa.blog/
-	FeedUrl         string // https://ludic.mataroa.blog/rss/
+	UserUrl         string // https://rss-parrot.net/u/taiwantrailsandtales.com
+	Handle          string // taiwantrailsandtales.com
+	FeedName        string // taiwan trails and tales | a guide to get you out of the city and into the hills
+	FeedSummary     string // Taiwan Trails and Tales is a one-stop shop for everything Taiwan hiking related. Here you can find information about hundreds of hiking trails in Taiwan, as well as all the details you need to know about how and when to visit.
+	SiteUrl         string // https://taiwantrailsandtales.com
+	FeedUrl         string // https://taiwantrailsandtales.com/feed
 	FeedLastUpdated time.Time
 	NextCheckDue    time.Time
 	PubKey          string

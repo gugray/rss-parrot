@@ -160,9 +160,9 @@ func (repo *Repo) AddAccountIfNotExist(acct *Account, privKey string) (isNew boo
 
 	isNew = true
 	_, err = repo.db.Exec(`INSERT INTO accounts
-    	(created_at, approve_status, user_url, handle, name, summary, profile_image_url, site_url, feed_url, pubkey, privkey)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		acct.CreatedAt, acct.ApproveStatus, acct.UserUrl, acct.Handle, acct.Name, acct.Summary, acct.ProfileImageUrl,
+    	(created_at, user_url, handle, feed_name, feed_summary, profile_image_url, site_url, feed_url, pubkey, privkey)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		acct.CreatedAt, acct.UserUrl, acct.Handle, acct.FeedName, acct.FeedSummary, acct.ProfileImageUrl,
 		acct.SiteUrl, acct.FeedUrl, acct.PubKey, privKey)
 	if err == nil {
 		return
@@ -204,12 +204,12 @@ func (repo *Repo) GetAccount(user string) (*Account, error) {
 func (repo *Repo) getAccount(user string) (*Account, error) {
 
 	row := repo.db.QueryRow(
-		`SELECT id, created_at, approve_status, user_url, handle, name, summary, profile_image_url, site_url, feed_url,
+		`SELECT id, created_at, user_url, handle, feed_name, feed_summary, profile_image_url, site_url, feed_url,
          		feed_last_updated, next_check_due, pubkey
 		FROM accounts WHERE handle=?`, user)
 	var err error
 	var res Account
-	err = row.Scan(&res.Id, &res.CreatedAt, &res.ApproveStatus, &res.UserUrl, &res.Handle, &res.Name, &res.Summary,
+	err = row.Scan(&res.Id, &res.CreatedAt, &res.UserUrl, &res.Handle, &res.FeedName, &res.FeedSummary,
 		&res.ProfileImageUrl, &res.SiteUrl, &res.FeedUrl, &res.FeedLastUpdated, &res.NextCheckDue, &res.PubKey)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -230,14 +230,14 @@ func (repo *Repo) GetAccountsPage(offset, limit int) ([]*Account, int, error) {
 	var total int
 	var err error
 
-	row := repo.db.QueryRow(`SELECT COUNT(*) FROM accounts WHERE approve_status>-100 AND feed_url<>''`)
+	row := repo.db.QueryRow(`SELECT COUNT(*) FROM accounts`)
 	if err = row.Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
-	query := `SELECT id, created_at, approve_status, user_url, handle, name, summary, profile_image_url, site_url, feed_url,
+	query := `SELECT id, created_at, user_url, handle, feed_name, feed_summary, profile_image_url, site_url, feed_url,
         feed_last_updated, next_check_due, pubkey
-		FROM accounts WHERE approve_status>-100 AND feed_url<>'' ORDER BY ID DESC LIMIT ? OFFSET ?`
+		FROM accounts ORDER BY ID DESC LIMIT ? OFFSET ?`
 	rows, err := repo.db.Query(query, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -246,7 +246,7 @@ func (repo *Repo) GetAccountsPage(offset, limit int) ([]*Account, int, error) {
 
 	for rows.Next() {
 		a := Account{}
-		err = rows.Scan(&a.Id, &a.CreatedAt, &a.ApproveStatus, &a.UserUrl, &a.Handle, &a.Name, &a.Summary,
+		err = rows.Scan(&a.Id, &a.CreatedAt, &a.UserUrl, &a.Handle, &a.FeedName, &a.FeedSummary,
 			&a.ProfileImageUrl, &a.SiteUrl, &a.FeedUrl, &a.FeedLastUpdated, &a.NextCheckDue, &a.PubKey)
 		if err = rows.Err(); err != nil {
 			return nil, 0, err
@@ -470,7 +470,7 @@ func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, error) {
 	repo.muDb.RLock()
 	defer repo.muDb.RUnlock()
 
-	rows, err := repo.db.Query(`SELECT id, created_at, approve_status, user_url, handle, name, summary,
+	rows, err := repo.db.Query(`SELECT id, created_at, user_url, handle, feed_name, feed_summary,
     	profile_image_url, site_url, feed_url, feed_last_updated, next_check_due, pubkey
 		FROM accounts WHERE next_check_due<? LIMIT 1`, checkDue)
 	if err != nil {
@@ -480,7 +480,7 @@ func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, error) {
 	var acct *Account = nil
 	for rows.Next() {
 		res := Account{}
-		err = rows.Scan(&res.Id, &res.CreatedAt, &res.ApproveStatus, &res.UserUrl, &res.Handle, &res.Name, &res.Summary,
+		err = rows.Scan(&res.Id, &res.CreatedAt, &res.UserUrl, &res.Handle, &res.FeedName, &res.FeedSummary,
 			&res.ProfileImageUrl, &res.SiteUrl, &res.FeedUrl, &res.FeedLastUpdated, &res.NextCheckDue, &res.PubKey)
 		if err = rows.Err(); err != nil {
 			return nil, err
