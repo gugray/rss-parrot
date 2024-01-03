@@ -117,9 +117,12 @@ article.post .description { margin-top: 6px; font-style: italic; font-size: 94%;
 p.omitted-posts { margin: 36px 0; border-top: 1px dotted var(--clrTextFainter); padding-top: 36px; }
 
 
-footer {
-  display: flex; justify-content: flex-end; font-size: 15px;
-}
+footer { display: flex; justify-content: flex-end; font-size: 15px; }
+footer p { margin-left: 6px; }
+footer p.source a { display: flex; }
+footer p.source a:hover { text-decoration: none; }
+footer p.source span { display: block; }
+footer p.source svg { width: 20px; height: 20px; }
 
 main {
   flex-grow: 1;
