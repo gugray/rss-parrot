@@ -61,7 +61,7 @@ func GetHandleFromUrl(url string) string {
 			buf.WriteString(".")
 		}
 	}
-	res := buf.String()
+	res := strings.ToLower(buf.String())
 
 	for {
 		merged := strings.ReplaceAll(res, "..", ".")
