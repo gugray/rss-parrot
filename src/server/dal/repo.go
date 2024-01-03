@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"github.com/mattn/go-sqlite3"
 	"rss_parrot/shared"
+	"strings"
 	"sync"
 	"time"
 )
 
-const schemaVer = 1
+const schemaVer = 2
 
 //go:embed scripts/*
 var scripts embed.FS
@@ -126,9 +127,15 @@ func (repo *Repo) InitUpdateDb() {
 			repo.logger.Errorf("Failed to execute init script %s: %v", fn, err)
 			panic(err)
 		}
+		if nextVer == 2 {
+			if err = repo.upgrade02(); err != nil {
+				repo.logger.Errorf("Failed to execute upgrade script to %d: %v", nextVer, err)
+				panic(err)
+			}
+		}
 		_, err = repo.db.Exec("UPDATE sys_params SET val=? WHERE name='schema_ver'", nextVer)
 		if err != nil {
-			repo.logger.Errorf("Failed to update schema_ver to %d: %v", i, err)
+			repo.logger.Errorf("Failed to update schema_ver to %d: %v", nextVer, err)
 			panic(err)
 		}
 	}
@@ -136,6 +143,50 @@ func (repo *Repo) InitUpdateDb() {
 	if dbVer == 0 {
 		repo.mustAddBuiltInUsers()
 	}
+}
+
+func (repo *Repo) upgrade02() error {
+	// SELECT id, user_url, handle FROM accounts ORDER BY ID DESC LIMIT 400
+
+	query := `SELECT id, user_url, handle FROM accounts ORDER BY ID DESC LIMIT 600`
+	rows, err := repo.db.Query(query)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type item struct {
+		id      int
+		userUrl string
+		handle  string
+	}
+	var toUpdate []item
+
+	for rows.Next() {
+		var i item
+		err = rows.Scan(&i.id, &i.userUrl, &i.handle)
+		if err = rows.Err(); err != nil {
+			return err
+		}
+		loUserUrl := strings.ToLower(i.userUrl)
+		loHandle := strings.ToLower(i.handle)
+		if loUserUrl != i.userUrl || loHandle != i.handle {
+			i.userUrl = loUserUrl
+			i.handle = loHandle
+			toUpdate = append(toUpdate, i)
+		}
+	}
+
+	for _, i := range toUpdate {
+		_, err := repo.db.Exec("UPDATE accounts SET user_url=?, handle=? WHERE id=?", i.userUrl, i.handle, i.id)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return nil
+
 }
 
 func (repo *Repo) mustAddBuiltInUsers() {
