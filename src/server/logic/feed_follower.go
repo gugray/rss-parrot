@@ -19,8 +19,18 @@ import (
 
 const feedCheckLoopIdleWakeSec = 60
 
+type FeedStatus int32
+
+const (
+	FsNew             = 0
+	FsAlreadyFollowed = 1
+	FsError           = -1
+	FsMastodon        = -2
+	FsBanned          = -3
+)
+
 type IFeedFollower interface {
-	GetAccountForFeed(urlStr string) (acct *dal.Account, isNew bool, err error)
+	GetAccountForFeed(urlStr string) (acct *dal.Account, status FeedStatus, err error)
 }
 
 type SiteInfo struct {
@@ -95,7 +105,7 @@ func (ff *feedFollower) getFeedUrl(siteUrl *url.URL, doc *goquery.Document) stri
 	return res
 }
 
-func (ff *feedFollower) getMetas(siteUrl *url.URL, doc *goquery.Document, si *SiteInfo) {
+func (ff *feedFollower) getMetas(doc *goquery.Document, si *SiteInfo) {
 	s := doc.Find("title").First()
 	if s.Length() != 0 {
 		si.Title = s.Text()
@@ -179,7 +189,7 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, err
 		ff.logger.Warnf("No feed URL found: %s", siteUrl)
 		return nil, nil, fmt.Errorf("no feed URL found at %s", siteUrl)
 	}
-	ff.getMetas(siteUrl, doc, &res)
+	ff.getMetas(doc, &res)
 
 	// Get the feed to make sure it's there, and know when it's last changed
 	feed, err = fp.ParseURL(res.FeedUrl)
@@ -362,16 +372,31 @@ func (ff *feedFollower) createToot(accountId int, accountHandle string, itm *gof
 	return nil
 }
 
-func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, isNew bool, err error) {
+func (ff *feedFollower) filterFeed(feed *gofeed.Feed) FeedStatus {
+
+	generator := strings.ToLower(feed.Generator)
+	if strings.Contains(generator, "mastodon") {
+		return FsMastodon
+	}
+	// FsError is the OK response
+	return FsError
+}
+
+func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, status FeedStatus, err error) {
 
 	ff.logger.Infof("Retrieving site information: %s", urlStr)
 	acct = nil
-	isNew = false
+	status = FsError
 	err = nil
 
 	si, feed, siErr := ff.getSiteInfo(urlStr)
 	if siErr != nil {
 		err = siErr
+		return
+	}
+
+	status = ff.filterFeed(feed)
+	if status != FsError {
 		return
 	}
 
@@ -385,6 +410,7 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, isN
 		return
 	}
 
+	var isNew bool
 	isNew, err = ff.repo.AddAccountIfNotExist(&dal.Account{
 		CreatedAt:   time.Now(),
 		Handle:      si.ParrotHandle,
@@ -417,6 +443,11 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, isN
 		return
 	}
 
+	if isNew {
+		status = FsNew
+	} else {
+		status = FsAlreadyFollowed
+	}
 	return
 }
 

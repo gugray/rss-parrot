@@ -321,7 +321,24 @@ func (ib *inbox) HandleCreateNote(
 
 func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[dto.Note], moniker, blogUrl string) {
 
-	acct, _, err := ib.fdfol.GetAccountForFeed(blogUrl)
+	acct, status, err := ib.fdfol.GetAccountForFeed(blogUrl)
+
+	if status < 0 {
+		ib.logger.Infof("Site/feed is disallowed: %s: %d", blogUrl, status)
+		template := "reply_feed_banned.html"
+		if status == FsMastodon {
+			template = "reply_feed_mastodon.html"
+		}
+		msg := ib.txt.WithVals(template, map[string]string{
+			"moniker": moniker,
+			"userUrl": senderInfo.Id,
+		})
+		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+			[]*MsgMention{{moniker, act.Actor}},
+			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
+			act.Object.Id)
+		return
+	}
 
 	if acct == nil {
 		ib.logger.Infof("Could not create/retrieve account for site: %s: %v", blogUrl, err)

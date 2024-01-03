@@ -93,9 +93,14 @@ func (hg *apiHandlerGroup) postFeeds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	acct, isNew, feedErr := hg.fdfol.GetAccountForFeed(feed.SiteUrl)
-	if acct == nil {
+	acct, status, feedErr := hg.fdfol.GetAccountForFeed(feed.SiteUrl)
+	if feedErr != nil {
 		msg := fmt.Sprintf("Failed to get feed: %v", feedErr)
+		writeErrorResponse(w, msg, http.StatusInternalServerError)
+		return
+	}
+	if status < 0 {
+		msg := fmt.Sprintf("Feed is banned: %d", status)
 		writeErrorResponse(w, msg, http.StatusInternalServerError)
 		return
 	}
@@ -112,7 +117,7 @@ func (hg *apiHandlerGroup) postFeeds(w http.ResponseWriter, r *http.Request) {
 		NextCheckDue:    acct.NextCheckDue,
 	}
 
-	if isNew {
+	if status == logic.FsNew {
 		w.WriteHeader(http.StatusCreated)
 	} else {
 		w.WriteHeader(http.StatusOK)
