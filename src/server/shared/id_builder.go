@@ -2,6 +2,7 @@ package shared
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -44,6 +45,33 @@ func TruncateWithEllipsis(text string, maxLen int) string {
 	}
 	// If here, string is shorter or equal to maxLen
 	return text
+}
+
+func ValidateHandle(handle string) error {
+	if len(handle) == 0 {
+		return errors.New("parrot handle cannot be empty")
+	}
+	var nDots, nNonDots, nUpper int
+	for _, c := range handle {
+		if unicode.IsUpper(c) {
+			nUpper++
+		}
+		if c == '.' {
+			nDots++
+		} else {
+			nNonDots++
+		}
+	}
+	if nDots == 0 {
+		return errors.New("parrot handle must have at least one dot")
+	}
+	if nNonDots < 2 {
+		return errors.New("parrot handle must have at least two non-dots")
+	}
+	if nUpper != 0 {
+		return errors.New("parrot handle must not have upper-case letters")
+	}
+	return nil
 }
 
 func GetHandleFromUrl(url string) string {

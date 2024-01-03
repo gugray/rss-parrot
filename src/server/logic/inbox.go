@@ -323,13 +323,9 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 
 	acct, status, err := ib.fdfol.GetAccountForFeed(blogUrl)
 
-	if status < 0 {
-		ib.logger.Infof("Site/feed is disallowed: %s: %d", blogUrl, status)
-		template := "reply_feed_banned.html"
-		if status == FsMastodon {
-			template = "reply_feed_mastodon.html"
-		}
-		msg := ib.txt.WithVals(template, map[string]string{
+	if acct == nil {
+		ib.logger.Infof("Could not create/retrieve account for site: %s: %v", blogUrl, err)
+		msg := ib.txt.WithVals("reply_site_not_found.html", map[string]string{
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})
@@ -340,9 +336,13 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 		return
 	}
 
-	if acct == nil {
-		ib.logger.Infof("Could not create/retrieve account for site: %s: %v", blogUrl, err)
-		msg := ib.txt.WithVals("reply_site_not_found.html", map[string]string{
+	if status < 0 {
+		ib.logger.Infof("Site/feed is disallowed: %s: %d", blogUrl, status)
+		template := "reply_feed_banned.html"
+		if status == FsMastodon {
+			template = "reply_feed_mastodon.html"
+		}
+		msg := ib.txt.WithVals(template, map[string]string{
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})

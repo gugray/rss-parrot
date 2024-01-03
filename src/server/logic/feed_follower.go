@@ -135,6 +135,16 @@ func getLastUpdated(feed *gofeed.Feed) time.Time {
 	return t
 }
 
+func (ff *feedFollower) validateSiteInfo(si *SiteInfo) error {
+	if _, err := url.Parse(si.FeedUrl); err != nil {
+		return err
+	}
+	if err := shared.ValidateHandle(si.ParrotHandle); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, error) {
 
 	urlStr = strings.TrimRight(urlStr, "/")
@@ -390,6 +400,9 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, sta
 	err = nil
 
 	si, feed, siErr := ff.getSiteInfo(urlStr)
+	if siErr == nil {
+		siErr = ff.validateSiteInfo(si)
+	}
 	if siErr != nil {
 		err = siErr
 		return

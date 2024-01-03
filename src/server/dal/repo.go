@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const schemaVer = 2
+const schemaVer = 3
 
 //go:embed scripts/*
 var scripts embed.FS
