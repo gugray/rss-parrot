@@ -70,7 +70,8 @@ header nav a {
 header nav a:last-of-type { margin-right: 0; }
 header nav a:hover, header nav a.selected { border-bottom-color: var(--clrLink); text-decoration: none; }
 
-h2 { margin: 22px 0; }
+h2 { margin: 22px 0; font-size: 27px; }
+h3 { margin: 22px 0; font-size: 22px; }
 
 .bottom-spacer { height: 64px; }
 .inline-icon { width: 24px; height: 24px; vertical-align: bottom; }
@@ -84,6 +85,9 @@ h2 { margin: 22px 0; }
   text-align: center; font-weight: bold;
   color: var(--clrBodyBg); background-color: var(--clrTextFainter);
 }
+
+a.jump, a.jump:hover { text-decoration: none; color: inherit; }
+
 
 nav.pager { text-align: center; margin-top: 48px; }
 nav.pager a {

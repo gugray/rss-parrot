@@ -1,0 +1,70 @@
+{{define "main"}}
+  <h2>Changes and announcements</h2>
+  <a id="2024-01-03" class="jump"><h3>2024-01-03 ~ beta release ~</h3></a>
+  <p>
+    What a day! I launched RSS Parrot last night with what I thought would be a
+    <a href="https://genart.social/@twilliability/111688775264827884">low-profile toot</a>
+    that was meant to go essentially unnoticed. Boy, was I wrong! The response has been beyond any expectations.
+    The toot has been boosted almost 1,000 times in the first 24 hours, which is several times more "viral"
+    than any post of mine ever went on the internet.
+  </p>
+  <p>
+    The really good things:
+  </p>
+  <ul>
+    <li>The reactions have been overwhelmingly positive, helpful, and nice. Thank you!</li>
+    <li>The birb made it through the day! The service has survived the first 24 hours without major hiccups.</li>
+    <li>
+      Y'all have requested over 300 new feeds, on top of the 10,000+ that were already there from the Kagi
+      <a href="https://github.com/kagisearch/smallweb">small web</a>.
+    </li>
+    <li>
+      My spot checks have revealed almost<sup>*</sup> no ugly content among the requested feeds.
+    </li>
+  </ul>
+  <p>
+    Issues discovered:
+  </p>
+  <ul>
+    <li>
+      If you requested a URL with upper-case letters, things became funny
+      [<a href="https://github.com/gugray/rss-parrot/issues/9">fixed</a>]
+    </li>
+    <li>
+      Some funny feeds could result in an anomalous, nameless account
+      [<a href="https://github.com/gugray/rss-parrot/issues/4">fixed</a>]
+    </li>
+    <li>
+      Not accepting requests in DMs may not be a good idea after all
+      [<a href="https://github.com/gugray/rss-parrot/issues/10">deliberating</a>]
+    </li>
+    <li>
+      Feed descriptions often have ugly HTML entities like &amp;#39; for quotes and apostrophes
+      [<a href="https://github.com/gugray/rss-parrot/issues/3">filed</a>]
+    </li>
+    <li>
+      The birb cannot talk to Mastodon servers in "secure" mode
+      [<a href="https://github.com/gugray/rss-parrot/issues/2">filed</a>]
+    </li>
+  </ul>
+  <p>Misc plans and thoughts:</p>
+  <ul>
+    <li>
+      I'm seeing feeds from Nitter, which I didn't even know had RSS feeds. I'm not sure how I feel about this.
+      Even though I mention Bluesky myself on the front page, my original idea for the Parrot is essentially indieweb sites
+      with a relaxed publishing cadence. But I guess as long as the service can cope and Fediverse folks aren't
+      offended, this should be fine.
+    </li>
+    <li>
+      I expected that the uptake would be much slower, giving me more time to think about moderation. So far, by
+      random spot checks, I have spotted one feed that must be kicked out (and rest assured, will be).
+      This means I must fast-track the blocklist functionality for feeds as well as Mastodon instances.
+    </li>
+    <li>
+      Both launch day, and the weeks leading up to it, have been somewhat overwhelming. I'll be more hands-off
+      in the next few days. An unplanned trip comes in handy, forcing me to adopt a more async approach to
+      incoming communication.
+    </li>
+  </ul>
+  <div class="bottom-spacer"></div>
+{{end}}

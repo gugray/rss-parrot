@@ -65,6 +65,7 @@ func (hg *webHandlerGroup) GroupDefs() []handlerDef {
 	return []handlerDef{
 		{"GET", "/feeds/{feed}", func(w http.ResponseWriter, r *http.Request) { hg.getOneFeed(w, r) }},
 		{"GET", "/feeds", func(w http.ResponseWriter, r *http.Request) { hg.getFeeds(w, r) }},
+		{"GET", "/changes", func(w http.ResponseWriter, r *http.Request) { hg.getChanges(w, r) }},
 		{"GET", "/about", func(w http.ResponseWriter, r *http.Request) { hg.getAbout(w, r) }},
 		{"GET", rootPlacholder, func(w http.ResponseWriter, r *http.Request) { hg.getRoot(w, r) }},
 		{"GET", notFoundPlacholder, func(w http.ResponseWriter, r *http.Request) { hg.send404(w, r) }},
@@ -171,11 +172,12 @@ func (hg *webHandlerGroup) addTemplateFuncs(t *template.Template) {
 }
 
 type baseModel struct {
-	Timestamp     string
-	Version       string
-	LnkFeedsClass string
-	LnkAboutClass string
-	Data          any
+	Timestamp       string
+	Version         string
+	LnkFeedsClass   string
+	LnkChangesClass string
+	LnkAboutClass   string
+	Data            any
 }
 
 func (hg *webHandlerGroup) getRoot(w http.ResponseWriter, r *http.Request) {
@@ -212,6 +214,13 @@ func (hg *webHandlerGroup) getAbout(w http.ResponseWriter, r *http.Request) {
 
 	t, model := hg.mustGetPageTemplate("about")
 	model.LnkAboutClass = "selected"
+	t.ExecuteTemplate(w, "index.tmpl", model)
+}
+
+func (hg *webHandlerGroup) getChanges(w http.ResponseWriter, r *http.Request) {
+
+	t, model := hg.mustGetPageTemplate("changes")
+	model.LnkChangesClass = "selected"
 	t.ExecuteTemplate(w, "index.tmpl", model)
 }
 
