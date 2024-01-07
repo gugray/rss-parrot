@@ -174,7 +174,7 @@ func (repo *Repo) upgrade04() error {
 		if err = rows.Err(); err != nil {
 			return err
 		}
-		if !strings.ContainsAny(tf.title, "&") || !strings.Contains(tf.description, "&") {
+		if !strings.ContainsAny(tf.title, "&") && !strings.Contains(tf.description, "&") {
 			continue
 		}
 		toFix = append(toFix, tf)
@@ -223,7 +223,7 @@ func (repo *Repo) upgrade04B(toFix []postToFix) {
 		if from >= len(toFix) {
 			break
 		}
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 2)
 	}
 	repo.logger.Printf("All records fixed")
 }
