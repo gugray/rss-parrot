@@ -6,6 +6,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/mmcdole/gofeed"
 	"github.com/spaolacci/murmur3"
+	"html"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -318,8 +319,10 @@ func (ff *feedFollower) getNextCheckTime(lastChanged time.Time) time.Time {
 }
 
 func stripHtml(htm string) string {
-	p := bluemonday.StripTagsPolicy()
+	p := bluemonday.StrictPolicy()
 	plain := p.Sanitize(htm)
+	plain = html.UnescapeString(plain)
+	plain = strings.TrimSpace(plain)
 	return plain
 }
 

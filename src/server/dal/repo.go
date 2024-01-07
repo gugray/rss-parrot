@@ -6,13 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mattn/go-sqlite3"
+	"html"
 	"rss_parrot/shared"
 	"strings"
 	"sync"
 	"time"
 )
 
-const schemaVer = 3
+const schemaVer = 4
 
 //go:embed scripts/*
 var scripts embed.FS
@@ -131,9 +132,9 @@ func (repo *Repo) InitUpdateDb() {
 			repo.logger.Errorf("Failed to execute init script %s: %v", fn, err)
 			panic(err)
 		}
-		if nextVer == 2 {
-			if err = repo.upgrade02(); err != nil {
-				repo.logger.Errorf("Failed to execute upgrade script to %d: %v", nextVer, err)
+		if nextVer == 4 {
+			if err = repo.upgrade04(); err != nil {
+				repo.logger.Errorf("Failed to execute upgrade code to %d: %v", nextVer, err)
 				panic(err)
 			}
 		}
@@ -149,48 +150,82 @@ func (repo *Repo) InitUpdateDb() {
 	}
 }
 
-func (repo *Repo) upgrade02() error {
-	// SELECT id, user_url, handle FROM accounts ORDER BY ID DESC LIMIT 400
+type postToFix struct {
+	accountId    int
+	postGuidHash int
+	title        string
+	description  string
+}
 
-	query := `SELECT id, user_url, handle FROM accounts ORDER BY ID DESC LIMIT 600`
+func (repo *Repo) upgrade04() error {
+
+	toFix := make([]postToFix, 0, 6000)
+
+	query := `SELECT account_id, post_guid_hash, title, description FROM feed_posts`
 	rows, err := repo.db.Query(query)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
-	type item struct {
-		id      int
-		userUrl string
-		handle  string
-	}
-	var toUpdate []item
-
 	for rows.Next() {
-		var i item
-		err = rows.Scan(&i.id, &i.userUrl, &i.handle)
+		tf := postToFix{}
+		err = rows.Scan(&tf.accountId, &tf.postGuidHash, &tf.title, &tf.description)
 		if err = rows.Err(); err != nil {
 			return err
 		}
-		loUserUrl := strings.ToLower(i.userUrl)
-		loHandle := strings.ToLower(i.handle)
-		if loUserUrl != i.userUrl || loHandle != i.handle {
-			i.userUrl = loUserUrl
-			i.handle = loHandle
-			toUpdate = append(toUpdate, i)
+		if !strings.ContainsAny(tf.title, "&") || !strings.Contains(tf.description, "&") {
+			continue
 		}
+		toFix = append(toFix, tf)
 	}
 
-	for _, i := range toUpdate {
-		_, err := repo.db.Exec("UPDATE accounts SET user_url=?, handle=? WHERE id=?", i.userUrl, i.handle, i.id)
-		if err != nil {
-			return err
-		}
+	repo.logger.Printf("%d feed posts to fix", len(toFix))
 
-	}
+	go repo.upgrade04B(toFix)
 
 	return nil
+}
 
+func (repo *Repo) upgrade04B(toFix []postToFix) {
+
+	fixText := func(str string) string {
+		fixed := html.UnescapeString(str)
+		fixed = strings.TrimSpace(fixed)
+		return fixed
+	}
+
+	for i := range toFix {
+		toFix[i].title = fixText(toFix[i].title)
+		toFix[i].description = fixText(toFix[i].description)
+	}
+
+	fixBatch := func(batch []postToFix) {
+		repo.muDb.Lock()
+		defer repo.muDb.Unlock()
+		for _, tf := range toFix {
+			_, err := repo.db.Exec(`UPDATE feed_posts SET title=?, description=?
+				WHERE account_id=? AND post_guid_hash=?`, tf.title, tf.description, tf.accountId, tf.postGuidHash)
+			if err != nil {
+				repo.logger.Errorf("Failed to fix post: account_id: %d, post_guid_hash: %d", tf.accountId, tf.postGuidHash)
+			}
+		}
+	}
+
+	from := 0
+	batchSize := 512
+	for {
+		repo.logger.Printf("Fixing batch of %d from %d", batchSize, from)
+		to := min(from+batchSize, len(toFix))
+		batch := toFix[from:to]
+		fixBatch(batch)
+		from = from + batchSize
+		if from >= len(toFix) {
+			break
+		}
+		time.Sleep(time.Second * 5)
+	}
+	repo.logger.Printf("All records fixed")
 }
 
 func (repo *Repo) mustAddBuiltInUsers() {
@@ -417,8 +452,8 @@ func (repo *Repo) GetApprovedFollowerCount(user string) (uint, error) {
 
 func (repo *Repo) GetFeedFollowerCount() (int, error) {
 
-	repo.muDb.Lock()
-	defer repo.muDb.Unlock()
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
 
 	row := repo.db.QueryRow(`SELECT COUNT(*) FROM followers WHERE account_id NOT IN
         (SELECT id FROM accounts WHERE handle='?');`, repo.cfg.Birb.User)
