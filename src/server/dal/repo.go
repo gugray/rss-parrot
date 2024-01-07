@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mattn/go-sqlite3"
+	"github.com/microcosm-cc/bluemonday"
 	"html"
 	"rss_parrot/shared"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"time"
 )
 
-const schemaVer = 4
+const schemaVer = 5
 
 //go:embed scripts/*
 var scripts embed.FS
@@ -132,8 +133,8 @@ func (repo *Repo) InitUpdateDb() {
 			repo.logger.Errorf("Failed to execute init script %s: %v", fn, err)
 			panic(err)
 		}
-		if nextVer == 4 {
-			if err = repo.upgrade04(); err != nil {
+		if nextVer == 5 {
+			if err = repo.upgrade05(); err != nil {
 				repo.logger.Errorf("Failed to execute upgrade code to %d: %v", nextVer, err)
 				panic(err)
 			}
@@ -157,7 +158,7 @@ type postToFix struct {
 	description  string
 }
 
-func (repo *Repo) upgrade04() error {
+func (repo *Repo) upgrade05() error {
 
 	toFix := make([]postToFix, 0, 6000)
 
@@ -182,15 +183,18 @@ func (repo *Repo) upgrade04() error {
 
 	repo.logger.Printf("%d feed posts to fix", len(toFix))
 
-	go repo.upgrade04B(toFix)
+	go repo.upgrade05B(toFix)
 
 	return nil
 }
 
-func (repo *Repo) upgrade04B(toFix []postToFix) {
+func (repo *Repo) upgrade05B(toFix []postToFix) {
+
+	p := bluemonday.StrictPolicy()
 
 	fixText := func(str string) string {
-		fixed := html.UnescapeString(str)
+		fixed := p.Sanitize(str)
+		fixed = html.UnescapeString(fixed)
 		fixed = strings.TrimSpace(fixed)
 		return fixed
 	}
