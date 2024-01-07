@@ -25,6 +25,7 @@ type inbox struct {
 	idb             shared.IdBuilder
 	repo            dal.IRepo
 	txt             texts.ITexts
+	metrics         IMetrics
 	udir            IUserDirectory
 	keyStore        IKeyStore
 	sender          IActivitySender
@@ -39,6 +40,7 @@ func NewInbox(
 	logger shared.ILogger,
 	repo dal.IRepo,
 	txt texts.ITexts,
+	metrics IMetrics,
 	udir IUserDirectory,
 	keyStore IKeyStore,
 	sender IActivitySender,
@@ -47,7 +49,7 @@ func NewInbox(
 ) IInbox {
 	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/u/([^/]+)/?")
 	reHttps := regexp.MustCompile("https?://[^ ]+")
-	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt, udir,
+	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt, metrics, udir,
 		keyStore, sender, messenger, fdfol,
 		reUserUrlParser, reHttps}
 }
@@ -122,6 +124,7 @@ func (ib *inbox) HandleFollow(
 	if err != nil {
 		return "", err
 	}
+	ib.updateFollowerMetric()
 
 	autoAccept := true
 	if account.Handle == ib.cfg.Birb.User && ib.cfg.Birb.ManuallyApprovesFollows {
@@ -138,6 +141,15 @@ func (ib *inbox) HandleFollow(
 	}
 
 	return
+}
+
+func (ib *inbox) updateFollowerMetric() {
+	if count, err := ib.repo.GetFeedFollowerCount(); err != nil {
+		ib.logger.Errorf("Error getting feed follower count: %v", err)
+		return
+	} else {
+		ib.metrics.TotalFollowers(count)
+	}
 }
 
 func (ib *inbox) HandleUndo(
@@ -218,6 +230,12 @@ func (ib *inbox) handleUnfollow(receivingUser string, bodyBytes []byte) (reqProb
 	}
 
 	err = ib.repo.RemoveFollower(receivingUser, actUndoFollow.Actor)
+	if err != nil {
+		ib.logger.Errorf("Error removing follower '%s' of '%s': %v", actUndoFollow.Actor, receivingUser, err)
+		return
+	}
+
+	ib.updateFollowerMetric()
 
 	return
 }

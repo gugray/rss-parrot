@@ -26,6 +26,7 @@ type messenger struct {
 	repo            dal.IRepo
 	keyStore        IKeyStore
 	sender          IActivitySender
+	metrics         IMetrics
 	idb             shared.IdBuilder
 	newTootsInQueue chan struct{}
 	tqProgress      map[int]interface{}
@@ -37,6 +38,7 @@ func NewMessenger(
 	repo dal.IRepo,
 	keyStore IKeyStore,
 	sender IActivitySender,
+	metrics IMetrics,
 ) IMessenger {
 	m := messenger{
 		cfg:      cfg,
@@ -44,6 +46,7 @@ func NewMessenger(
 		repo:     repo,
 		keyStore: keyStore,
 		sender:   sender,
+		metrics:  metrics,
 		idb:      shared.IdBuilder{cfg.Host},
 	}
 	m.newTootsInQueue = make(chan struct{})
@@ -124,11 +127,13 @@ func (m *messenger) tootQueueLoop() {
 		}
 		var err error
 		var items []*dal.TootQueueItem
-		items, err = m.repo.GetTootQueueItems(maxId, maxParallelSends-len(m.tqProgress))
+		var qlen int
+		items, qlen, err = m.repo.GetTootQueueItems(maxId, maxParallelSends-len(m.tqProgress))
 		if err != nil {
 			m.logger.Errorf("Failed to get toot queue items: %v", err)
 			return
 		}
+		m.metrics.TootQueueLength(qlen)
 		for _, item := range items {
 			m.tqProgress[item.Id] = struct{}{}
 			go m.sendQueuedToot(item, tootSent)

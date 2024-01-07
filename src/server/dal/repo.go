@@ -31,15 +31,19 @@ type IRepo interface {
 	GetFeedLastUpdated(accountId int) (time.Time, error)
 	UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error
 	AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error)
-	GetAccountToCheck(checkDue time.Time) (*Account, error)
+	GetAccountToCheck(checkDue time.Time) (*Account, int, error)
 	GetApprovedFollowerCount(user string) (uint, error)
+
+	// Returns number of all followers of feeds. Includes unapproved and banned ones, but excludes followers of birb.
+	GetFeedFollowerCount() (int, error)
+
 	GetFollowersByUser(user string, onlyApproved bool) ([]*FollowerInfo, error)
 	GetFollowersById(accountId int, onlyApproved bool) ([]*FollowerInfo, error)
 	SetFollowerApproveStatus(user, followerUserUrl string, status int) error
 	AddFollower(user string, follower *FollowerInfo) error
 	RemoveFollower(user, followerUserUrl string) error
 	AddTootQueueItem(tqi *TootQueueItem) error
-	GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, error)
+	GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, int, error)
 	DeleteTootQueueItem(id int) error
 	MarkActivityHandled(id string, when time.Time) (alreadyHandled bool, err error)
 }
@@ -411,6 +415,21 @@ func (repo *Repo) GetApprovedFollowerCount(user string) (uint, error) {
 	return uint(count), nil
 }
 
+func (repo *Repo) GetFeedFollowerCount() (int, error) {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
+	row := repo.db.QueryRow(`SELECT COUNT(*) FROM followers WHERE account_id NOT IN
+        (SELECT id FROM accounts WHERE handle='?');`, repo.cfg.Birb.User)
+	var err error
+	var count int
+	if err = row.Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (repo *Repo) SetFollowerApproveStatus(user, followerUserUrl string, status int) error {
 
 	repo.muDb.Lock()
@@ -544,16 +563,22 @@ func (repo *Repo) UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDu
 	return err
 }
 
-func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, error) {
+func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, int, error) {
 
 	repo.muDb.RLock()
 	defer repo.muDb.RUnlock()
+
+	var nCheckableAccounts int
+	row := repo.db.QueryRow(`SELECT COUNT(*) FROM accounts WHERE next_check_due<?`, checkDue)
+	if err := row.Scan(&nCheckableAccounts); err != nil {
+		return nil, 0, err
+	}
 
 	rows, err := repo.db.Query(`SELECT id, created_at, user_url, handle, feed_name, feed_summary,
     	profile_image_url, site_url, feed_url, feed_last_updated, next_check_due, pubkey
 		FROM accounts WHERE next_check_due<? LIMIT 1`, checkDue)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var acct *Account = nil
@@ -562,11 +587,11 @@ func (repo *Repo) GetAccountToCheck(checkDue time.Time) (*Account, error) {
 		err = rows.Scan(&res.Id, &res.CreatedAt, &res.UserUrl, &res.Handle, &res.FeedName, &res.FeedSummary,
 			&res.ProfileImageUrl, &res.SiteUrl, &res.FeedUrl, &res.FeedLastUpdated, &res.NextCheckDue, &res.PubKey)
 		if err = rows.Err(); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		acct = &res
 	}
-	return acct, nil
+	return acct, nCheckableAccounts, nil
 
 }
 
@@ -611,15 +636,21 @@ func (repo *Repo) AddTootQueueItem(tqi *TootQueueItem) error {
 	return err
 }
 
-func (repo *Repo) GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, error) {
+func (repo *Repo) GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, int, error) {
 
 	repo.muDb.RLock()
 	defer repo.muDb.RUnlock()
 
+	var itmCount int
+	row := repo.db.QueryRow(`SELECT COUNT(*) FROM toot_queue`)
+	if err := row.Scan(&itmCount); err != nil {
+		return nil, 0, err
+	}
+
 	rows, err := repo.db.Query(`SELECT id, sending_user, to_inbox, tooted_at, status_id, content
 		FROM toot_queue WHERE id>? ORDER BY id ASC LIMIT ?`, aboveId, maxCount)
 	if err != nil {
-		return nil, err
+		return nil, itmCount, err
 	}
 	defer rows.Close()
 	res := make([]*TootQueueItem, 0, maxCount)
@@ -627,14 +658,14 @@ func (repo *Repo) GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, er
 		tqi := TootQueueItem{}
 		err = rows.Scan(&tqi.Id, &tqi.SendingUser, &tqi.ToInbox, &tqi.TootedAt, &tqi.StatusId, &tqi.Content)
 		if err != nil {
-			return nil, err
+			return nil, itmCount, err
 		}
 		res = append(res, &tqi)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, itmCount, err
 	}
-	return res, nil
+	return res, itmCount, nil
 }
 
 func (repo *Repo) DeleteTootQueueItem(id int) error {

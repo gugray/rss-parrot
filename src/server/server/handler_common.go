@@ -12,13 +12,14 @@ import (
 const (
 	wwwPathPrefx       = "www/"
 	apiKeyHeader       = "X-API-KEY"
+	metricsAuthHeader  = "Authorization"
 	rootPlacholder     = "*root*"
 	notFoundPlacholder = "*404*"
 	internalErrorStr   = "500 Internal Server Error"
 	badRequestStr      = "400 Invalid Request"
 	notFoundStr        = "404 Not Found"
-	dirListNotAllowed  = "403 Directory Listing Not Allowed"
 	badApiKeyStr       = "401 Missing or Invalid API Key"
+	badAuthorization   = "401 Missing or Invalid Authorization Header"
 )
 
 // Defines a single HTTP handler (endpoint)

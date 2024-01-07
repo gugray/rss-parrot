@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"rss_parrot/dal"
+	"rss_parrot/logic"
 	"rss_parrot/shared"
 	"rss_parrot/texts"
 	"strconv"
@@ -30,6 +31,7 @@ type webHandlerGroup struct {
 	logger        shared.ILogger
 	repo          dal.IRepo
 	txt           texts.ITexts
+	metrics       logic.IMetrics
 	idb           shared.IdBuilder
 	version       string
 	timestamp     string
@@ -41,12 +43,14 @@ func NewWebHandlerGroup(
 	logger shared.ILogger,
 	repo dal.IRepo,
 	txt texts.ITexts,
+	metrics logic.IMetrics,
 ) IHandlerGroup {
 	res := webHandlerGroup{
 		cfg:           cfg,
 		logger:        logger,
 		repo:          repo,
 		txt:           txt,
+		metrics:       metrics,
 		idb:           shared.IdBuilder{cfg.Host},
 		timestamp:     fmt.Sprintf("%d", time.Now().UnixMilli()),
 		pageTemplates: make(map[string]*template.Template),
@@ -182,11 +186,17 @@ type baseModel struct {
 
 func (hg *webHandlerGroup) getRoot(w http.ResponseWriter, r *http.Request) {
 
+	obs := hg.metrics.StartWebRequestIn(r.URL.Path)
+	defer obs.Finish()
+
 	t, model := hg.mustGetPageTemplate("root")
 	t.ExecuteTemplate(w, "index.tmpl", model)
 }
 
 func (hg *webHandlerGroup) send404(w http.ResponseWriter, r *http.Request) {
+
+	obs := hg.metrics.StartWebRequestIn("/404")
+	defer obs.Finish()
 
 	if r.Method == "OPTIONS" {
 		return
@@ -204,6 +214,9 @@ func (hg *webHandlerGroup) send404(w http.ResponseWriter, r *http.Request) {
 
 func (hg *webHandlerGroup) send500(w http.ResponseWriter, r *http.Request) {
 
+	obs := hg.metrics.StartWebRequestIn("/500")
+	defer obs.Finish()
+
 	t, model := hg.mustGetPageTemplate("500")
 	w.WriteHeader(http.StatusNotFound)
 	w.Header().Set("X-Robots-Tag", "noindex")
@@ -212,12 +225,18 @@ func (hg *webHandlerGroup) send500(w http.ResponseWriter, r *http.Request) {
 
 func (hg *webHandlerGroup) getAbout(w http.ResponseWriter, r *http.Request) {
 
+	obs := hg.metrics.StartWebRequestIn(r.URL.Path)
+	defer obs.Finish()
+
 	t, model := hg.mustGetPageTemplate("about")
 	model.LnkAboutClass = "selected"
 	t.ExecuteTemplate(w, "index.tmpl", model)
 }
 
 func (hg *webHandlerGroup) getChanges(w http.ResponseWriter, r *http.Request) {
+
+	obs := hg.metrics.StartWebRequestIn(r.URL.Path)
+	defer obs.Finish()
 
 	t, model := hg.mustGetPageTemplate("changes")
 	model.LnkChangesClass = "selected"
@@ -236,6 +255,9 @@ type pageLink struct {
 }
 
 func (hg *webHandlerGroup) getFeeds(w http.ResponseWriter, r *http.Request) {
+
+	obs := hg.metrics.StartWebRequestIn(r.URL.Path)
+	defer obs.Finish()
 
 	var err error
 	pageIx := 0
@@ -355,6 +377,9 @@ func (hg *webHandlerGroup) loadFeedData(acct *dal.Account) *oneFeedModel {
 }
 
 func (hg *webHandlerGroup) getOneFeed(w http.ResponseWriter, r *http.Request) {
+
+	obs := hg.metrics.StartWebRequestIn("/feeds/<feed>")
+	defer obs.Finish()
 
 	hg.logger.Infof("Handling user GET: %s", r.URL.Path)
 	feedName := mux.Vars(r)["feed"]

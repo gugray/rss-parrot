@@ -20,13 +20,14 @@ type IActivitySender interface {
 }
 
 type activitySender struct {
-	cfg    *shared.Config
-	logger shared.ILogger
-	idb    shared.IdBuilder
+	cfg     *shared.Config
+	logger  shared.ILogger
+	metrics IMetrics
+	idb     shared.IdBuilder
 }
 
-func NewActivitySender(cfg *shared.Config, logger shared.ILogger) IActivitySender {
-	return &activitySender{cfg, logger, shared.IdBuilder{cfg.Host}}
+func NewActivitySender(cfg *shared.Config, logger shared.ILogger, metrics IMetrics) IActivitySender {
+	return &activitySender{cfg, logger, metrics, shared.IdBuilder{cfg.Host}}
 }
 
 func (sender *activitySender) Send(
@@ -35,6 +36,9 @@ func (sender *activitySender) Send(
 	inboxUrl string,
 	activity *dto.ActivityOut,
 ) error {
+
+	obs := sender.metrics.StartApubRequestOut("post")
+	defer obs.Finish()
 
 	host := strings.Replace(inboxUrl, "https://", "", -1)
 	slashIx := strings.IndexByte(host, '/')

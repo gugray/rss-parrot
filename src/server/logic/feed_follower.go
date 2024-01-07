@@ -49,6 +49,7 @@ type feedFollower struct {
 	messenger IMessenger
 	txt       texts.ITexts
 	keyStore  IKeyStore
+	metrics   IMetrics
 }
 
 func NewFeedFollower(
@@ -58,6 +59,7 @@ func NewFeedFollower(
 	messenger IMessenger,
 	txt texts.ITexts,
 	keyStore IKeyStore,
+	metrics IMetrics,
 ) IFeedFollower {
 	ff := feedFollower{
 		cfg:       cfg,
@@ -66,6 +68,7 @@ func NewFeedFollower(
 		messenger: messenger,
 		txt:       txt,
 		keyStore:  keyStore,
+		metrics:   metrics,
 	}
 	go ff.feedCheckLoop()
 	return &ff
@@ -341,6 +344,7 @@ func (ff *feedFollower) storePostIfNew(
 		return
 	}
 	if isNew {
+		ff.metrics.NewPostSaved()
 		if err = ff.createToot(accountId, accountHandle, itm, tootNew); err != nil {
 			return
 		}
@@ -395,6 +399,7 @@ func (ff *feedFollower) filterFeed(feed *gofeed.Feed) FeedStatus {
 func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, status FeedStatus, err error) {
 
 	ff.logger.Infof("Retrieving site information: %s", urlStr)
+	ff.metrics.FeedRequested()
 	acct = nil
 	status = FsError
 	err = nil
@@ -442,6 +447,10 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, sta
 
 	ff.logger.Infof("Account is %s; newly created: %v", si.ParrotHandle, isNew)
 
+	if isNew {
+		ff.metrics.NewFeedAdded()
+	}
+
 	acct, err = ff.repo.GetAccount(si.ParrotHandle)
 	if err != nil {
 		ff.logger.Errorf("Failed to load account for %s; was newly created: %v", si.ParrotHandle, isNew)
@@ -468,6 +477,7 @@ func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 
 	var err error
 	ff.logger.Infof("Updating account %s: %s", acct.Handle, acct.FeedUrl)
+	ff.metrics.FeedUpdated()
 
 	fp := gofeed.NewParser()
 	var feed *gofeed.Feed
@@ -486,11 +496,13 @@ func (ff *feedFollower) feedCheckLoop() {
 	for {
 		var err error
 		var acct *dal.Account
-		if acct, err = ff.repo.GetAccountToCheck(time.Now()); err != nil {
+		var total int
+		if acct, total, err = ff.repo.GetAccountToCheck(time.Now()); err != nil {
 			ff.logger.Errorf("Failed to get next feed due for checking: %v", err)
 			time.Sleep(feedCheckLoopIdleWakeSec * time.Second)
 			continue
 		}
+		ff.metrics.CheckableFeedCount(total)
 		if acct == nil {
 			ff.logger.Debugf("No feeds to check; sleeping %d seconds", feedCheckLoopIdleWakeSec)
 			time.Sleep(feedCheckLoopIdleWakeSec * time.Second)

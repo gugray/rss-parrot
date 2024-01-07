@@ -15,6 +15,7 @@ import (
 type apubHandlerGroup struct {
 	cfg        *shared.Config
 	logger     shared.ILogger
+	metrics    logic.IMetrics
 	sender     logic.IActivitySender
 	sigChecker logic.IHttpSigChecker
 	udir       logic.IUserDirectory
@@ -25,6 +26,7 @@ type apubHandlerGroup struct {
 func NewApubHandlerGroup(
 	cfg *shared.Config,
 	logger shared.ILogger,
+	metrics logic.IMetrics,
 	sender logic.IActivitySender,
 	sigChecker logic.IHttpSigChecker,
 	udir logic.IUserDirectory,
@@ -33,6 +35,7 @@ func NewApubHandlerGroup(
 	res := apubHandlerGroup{
 		cfg:        cfg,
 		logger:     logger,
+		metrics:    metrics,
 		sender:     sender,
 		sigChecker: sigChecker,
 		udir:       udir,
@@ -65,6 +68,8 @@ func (hg *apubHandlerGroup) AuthMW() func(next http.Handler) http.Handler {
 func (hg *apubHandlerGroup) getWebfinger(w http.ResponseWriter, r *http.Request) {
 
 	hg.logger.Infof("Handling webfinger GET: %s", r.URL.Path)
+	obs := hg.metrics.StartApubRequestIn("webfinger")
+	defer obs.Finish()
 
 	resourceParam := r.URL.Query().Get("resource")
 	groups := hg.reResource.FindStringSubmatch(resourceParam)
@@ -90,6 +95,8 @@ func (hg *apubHandlerGroup) getWebfinger(w http.ResponseWriter, r *http.Request)
 func (hg *apubHandlerGroup) getUser(w http.ResponseWriter, r *http.Request) {
 
 	hg.logger.Infof("Handling user GET: %s", r.URL.Path)
+	obs := hg.metrics.StartApubRequestIn("user")
+	defer obs.Finish()
 	userName := mux.Vars(r)["user"]
 
 	if !acceptsJson(r) {
@@ -113,6 +120,9 @@ func (hg *apubHandlerGroup) getUser(w http.ResponseWriter, r *http.Request) {
 func (hg *apubHandlerGroup) getUserOutbox(w http.ResponseWriter, r *http.Request) {
 
 	hg.logger.Infof("Handling user outbox GET: %s", r.URL.Path)
+	obs := hg.metrics.StartApubRequestIn("user/outbox")
+	defer obs.Finish()
+
 	userName := mux.Vars(r)["user"]
 	summary := hg.udir.GetOutboxSummary(userName)
 	if summary == nil {
@@ -126,6 +136,9 @@ func (hg *apubHandlerGroup) getUserOutbox(w http.ResponseWriter, r *http.Request
 func (hg *apubHandlerGroup) getUserFollowers(w http.ResponseWriter, r *http.Request) {
 
 	hg.logger.Infof("Handling user followers GET: %s", r.URL.Path)
+	obs := hg.metrics.StartApubRequestIn("user/followers")
+	defer obs.Finish()
+
 	userName := mux.Vars(r)["user"]
 	summary := hg.udir.GetFollowersSummary(userName)
 	if summary == nil {
@@ -139,6 +152,9 @@ func (hg *apubHandlerGroup) getUserFollowers(w http.ResponseWriter, r *http.Requ
 func (hg *apubHandlerGroup) getUserFollowing(w http.ResponseWriter, r *http.Request) {
 
 	hg.logger.Infof("Handling user following GET: %s", r.URL.Path)
+	obs := hg.metrics.StartApubRequestIn("user/following")
+	defer obs.Finish()
+
 	userName := mux.Vars(r)["user"]
 	summary := hg.udir.GetFollowingSummary(userName)
 	if summary == nil {
@@ -154,6 +170,15 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 	var err error
 	hg.logger.Infof("Handling user inbox POST: %s", r.URL.Path)
 	userName := mux.Vars(r)["user"]
+
+	if userName == "" {
+		obs := hg.metrics.StartApubRequestIn("inbox")
+		defer obs.Finish()
+	} else {
+		obs := hg.metrics.StartApubRequestIn("user/inbox")
+		defer obs.Finish()
+	}
+
 	bodyBytes := readBody(hg.logger, w, r)
 	if bodyBytes == nil {
 		hg.logger.Info("Empty request body")

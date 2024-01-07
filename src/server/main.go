@@ -44,6 +44,7 @@ func main() {
 			server.NewHTTPServer,
 			fx.Annotate(server.NewMux, fx.ParamTags(`group:"handler_group"`)),
 			logic.NewKeyStore,
+			logic.NewMetrics,
 			logic.NewFeedFollower,
 			logic.NewUserDirectory,
 			logic.NewActivitySender,
@@ -56,6 +57,7 @@ func main() {
 			asHandlerGroupDef(server.NewApubHandlerGroup),
 			asHandlerGroupDef(server.NewApiHandlerGroup),
 			asHandlerGroupDef(server.NewWebHandlerGroup),
+			asHandlerGroupDef(server.NewMetricsHandlerGroup),
 		),
 		fx.Invoke(
 			registerHooks,
