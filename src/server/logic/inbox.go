@@ -335,22 +335,13 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 
 	acct, status, err := ib.fdfol.GetAccountForFeed(blogUrl)
 
-	if acct == nil {
-		ib.logger.Infof("Could not create/retrieve account for site: %s: %v", blogUrl, err)
-		msg := ib.txt.WithVals("reply_site_not_found.html", map[string]string{
-			"moniker": moniker,
-			"userUrl": senderInfo.Id,
-		})
-		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
-			[]*MsgMention{{moniker, act.Actor}}, to, cc, act.Object.Id)
-		return
-	}
-
 	if status < 0 {
-		ib.logger.Infof("Site/feed is disallowed: %s: %d", blogUrl, status)
-		template := "reply_feed_banned.html"
+		ib.logger.Infof("Could not create/retrieve account for site: %s: %v", blogUrl, err)
+		template := "reply_site_not_found.html"
 		if status == FsMastodon {
 			template = "reply_feed_mastodon.html"
+		} else if status == FsBanned {
+			template = "reply_feed_banned.html"
 		}
 		msg := ib.txt.WithVals(template, map[string]string{
 			"moniker": moniker,
