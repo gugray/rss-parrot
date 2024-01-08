@@ -374,6 +374,7 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 		"userUrl":        senderInfo.Id,
 		"accountName":    acct.FeedName,
 		"accountMoniker": "@" + acct.Handle,
+		"host":           ib.cfg.Host,
 		"accountUrl":     accountUrl,
 	})
 	go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
