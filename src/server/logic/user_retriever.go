@@ -1,12 +1,16 @@
 package logic
 
 import (
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"github.com/go-fed/httpsig"
 	"io"
 	"net/http"
 	"rss_parrot/dto"
 	"rss_parrot/shared"
+	"strings"
+	"time"
 )
 
 type IUserRetriever interface {
@@ -14,21 +18,52 @@ type IUserRetriever interface {
 }
 
 type userRetriever struct {
-	cfg *shared.Config
+	cfg      *shared.Config
+	keyStore IKeyStore
+	idb      shared.IdBuilder
 }
 
-func NewUserRetriever(cfg *shared.Config) IUserRetriever {
-	return &userRetriever{cfg}
+func NewUserRetriever(cfg *shared.Config, keyStore IKeyStore) IUserRetriever {
+	return &userRetriever{cfg, keyStore, shared.IdBuilder{cfg.Host}}
 }
 
 func (ur *userRetriever) Retrieve(userUrl string) (info *dto.UserInfo, err error) {
 
-	client := &http.Client{}
+	host := strings.Replace(userUrl, "https://", "", -1)
+	slashIx := strings.IndexByte(host, '/')
+	host = host[:slashIx]
+	dateStr := time.Now().UTC().Format(http.TimeFormat)
+
 	var req *http.Request
 	if req, err = http.NewRequest("GET", userUrl, nil); err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("host", host)
+	req.Header.Set("date", dateStr)
+
+	signer, _, err := httpsig.NewSigner(
+		[]httpsig.Algorithm{httpsig.RSA_SHA256},
+		httpsig.DigestSha256,
+		[]string{httpsig.RequestTarget, "Host", "date", "digest"},
+		httpsig.Signature,
+		0)
+	if err != nil {
+		return nil, err
+	}
+
+	var privKey *rsa.PrivateKey
+	privKey, err = ur.keyStore.GetPrivKey(ur.cfg.Birb.User)
+	if err != nil {
+		return nil, err
+	}
+	keyId := ur.idb.UserKeyId(ur.cfg.Birb.User)
+	err = signer.SignRequest(privKey, keyId, req, []byte{})
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{}
 	var resp *http.Response
 	if resp, err = client.Do(req); err != nil {
 		return nil, err
