@@ -303,19 +303,8 @@ func (ib *inbox) HandleCreateNote(
 	}
 	moniker := shared.MakeFullMoniker(senderHostName, senderInfo.PreferredUserName)
 
-	// If not public: reply that we don't do DMs
-	if !toPublicOrFollowers {
-		ib.logger.Info("Message we got is a DM")
-		msg := ib.txt.WithVals("reply_no_dm.html", map[string]string{
-			"moniker": moniker,
-			"userUrl": senderInfo.Id,
-		})
-		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
-			[]*MsgMention{{moniker, act.Actor}},
-			[]string{act.Actor}, []string{},
-			act.Object.Id)
-		return
-	}
+	// What goes into to and cc
+	to, cc := ib.getRecipients(act.Actor, senderInfo.Followers, !toPublicOrFollowers)
 
 	// Look for exactly 1 valid URL in message
 	blogUrl := ib.getUrl(act.Object.Content)
@@ -326,18 +315,28 @@ func (ib *inbox) HandleCreateNote(
 			"userUrl": senderInfo.Id,
 		})
 		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
-			[]*MsgMention{{moniker, act.Actor}},
-			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
-			act.Object.Id)
+			[]*MsgMention{{moniker, act.Actor}}, to, cc, act.Object.Id)
 		return
 	}
 
-	go ib.handleSiteRequest(senderInfo, act, moniker, blogUrl)
+	go ib.handleSiteRequest(senderInfo, act, to, cc, moniker, blogUrl)
 
 	return
 }
 
-func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[dto.Note], moniker, blogUrl string) {
+func (ib *inbox) getRecipients(actor, followers string, isDM bool) (to, cc []string) {
+	if isDM {
+		to = []string{actor}
+		cc = []string{}
+	} else {
+		to = []string{shared.ActivityPublic}
+		cc = []string{actor, followers}
+	}
+	return
+}
+
+func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[dto.Note],
+	to, cc []string, moniker, blogUrl string) {
 
 	acct, status, err := ib.fdfol.GetAccountForFeed(blogUrl)
 
@@ -348,9 +347,7 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 			"userUrl": senderInfo.Id,
 		})
 		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
-			[]*MsgMention{{moniker, act.Actor}},
-			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
-			act.Object.Id)
+			[]*MsgMention{{moniker, act.Actor}}, to, cc, act.Object.Id)
 		return
 	}
 
@@ -365,9 +362,7 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 			"userUrl": senderInfo.Id,
 		})
 		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
-			[]*MsgMention{{moniker, act.Actor}},
-			[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
-			act.Object.Id)
+			[]*MsgMention{{moniker, act.Actor}}, to, cc, act.Object.Id)
 		return
 	}
 
@@ -383,13 +378,7 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 	})
 	go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
 		[]*MsgMention{{moniker, act.Actor}, {accountMoniker, accountUrl}},
-		[]string{shared.ActivityPublic}, []string{act.Actor, senderInfo.Followers},
-		act.Object.Id)
-
-	// @birb@rss-parrot.zydeo.net https://r4inee.wordpress.com
-	// @birb@rss-parrot.zydeo.net https://soatok.blog/b/
-	// @birb@rss-parrot.zydeo.net https://magazine.sebastianraschka.com/
-	// @birb@rss-parrot.zydeo.net https://mastodon.social/@zydeobor
+		to, cc, act.Object.Id)
 }
 
 func (ib *inbox) getUrl(content string) string {
@@ -397,6 +386,7 @@ func (ib *inbox) getUrl(content string) string {
 	pol := bluemonday.StrictPolicy()
 	plain := pol.Sanitize(content)
 	matches := ib.reHttps.FindAllString(plain, -1)
+
 	// Looking for exactly one valid Url
 	res := ""
 	for _, str := range matches {
