@@ -1,5 +1,42 @@
 {{define "main"}}
   <h2>Changes and announcements</h2>
+
+  <a id="2024-01-08" class="jump"><h3>2024-01-08 ~ improvements ~</h3></a>
+  <p>
+    I have released changes last night and just now that address several issues you have reported on Mastodon,
+    or directly in the <a href="https://github.com/gugray/rss-parrot/issues">project's issue tracker</a>
+    on Github. Here are the most important ones:
+  </p>
+  <ul>
+    <li>
+      The title and description of entries had ugly entities like &amp;#39; in place of apostrophes etc.
+      [<a href="https://github.com/gugray/rss-parrot/issues/3">fixed</a>]
+    </li>
+    <li>
+      If you mentioned the birb from a "secure" Mastodon server (the "authorized_fetch" option turned on),
+      the birb was unable to toot a response back at you
+      [<a href="https://github.com/gugray/rss-parrot/issues/2">fixed</a>]
+    </li>
+    <li>
+      The birb didn't like direct messages. This turned out to be a bad idea; many of you understandbly
+      don't want to spam public timelines with feed requests.<br>
+      [<a href="https://github.com/gugray/rss-parrot/issues/10">revised</a>: the birb accepts requests in DMs now]
+    </li>
+    <li>
+      Toots about podcast episodes that don't have a link to a web page, only a link to the audio file, did not contain
+      any link.<br>
+      [<a href="https://github.com/gugray/rss-parrot/issues/18">improved</a>: the birb uses the audio link
+      for such episodes now]
+    </li>
+  </ul>
+  <p>
+    It was nice to rabbithole a bit into the distribution of podcasts. I think I didn't know that a podcasts live as
+    an RSS feeds somewhere! The whole ecosystem of podcast apps and players hides this well; the RSS feeds themselves
+    are quite hard to get at. But not impossible! I discovered <a href="https://www.listennotes.com/">Listen Notes</a>,
+    a pleasantly no-nonsense site that lets you search for podcasts and shows you the feed itself. Great if you want
+    to follow you favorite pods via the Parrot! (I have no affiliation with Listen Notes.)
+  </p>
+
   <a id="2024-01-03" class="jump"><h3>2024-01-03 ~ beta release ~</h3></a>
   <p>
     What a day! I launched RSS Parrot last night with what I thought would be a
