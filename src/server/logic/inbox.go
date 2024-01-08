@@ -162,11 +162,6 @@ func (ib *inbox) HandleUndo(
 	reqProblem = ""
 	err = nil
 
-	if receivingUser != ib.cfg.Birb.User {
-		reqProblem = fmt.Sprintf("User does not exist: %s", receivingUser)
-		return
-	}
-
 	var actUndo dto.ActivityIn[dto.ActivityInBase]
 	if jsonErr := json.Unmarshal(bodyBytes, &actUndo); jsonErr != nil {
 		ib.logger.Info("Invalid JSON in Undo activity body")
