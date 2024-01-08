@@ -240,6 +240,7 @@ func (ff *feedFollower) updateAccountPosts(
 	// This goes from older to newer
 	keepers, newLastUpdated := getSortedPosts(feed.Items, lastKnownFeedUpdated)
 	for _, k := range keepers {
+		fixPodcastLink(k.itm)
 		if err = ff.storePostIfNew(accountId, accountHandle, k.postTime, k.itm, tootNew); err != nil {
 			return
 		}
@@ -250,6 +251,24 @@ func (ff *feedFollower) updateAccountPosts(
 		return
 	}
 	return
+}
+
+func fixPodcastLink(itm *gofeed.Item) {
+	if itm.Link != "" {
+		return
+	}
+	for _, enc := range itm.Enclosures {
+		if !strings.HasPrefix(enc.Type, "audio/") || enc.URL == "" {
+			continue
+		}
+		parsedUrl, err := url.Parse(enc.URL)
+		if err != nil {
+			continue
+		}
+		parsedUrl.RawQuery = ""
+		itm.Link = parsedUrl.String()
+		return
+	}
 }
 
 type sortedPost struct {
