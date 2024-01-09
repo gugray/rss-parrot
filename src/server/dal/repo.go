@@ -23,6 +23,7 @@ type IRepo interface {
 	DoesAccountExist(user string) (bool, error)
 	GetPrivKey(user string) (string, error)
 	GetAccount(user string) (*Account, error)
+	BruteDeleteAccount(accountId int) error
 	GetAccountsPage(offset, limit int) ([]*Account, int, error)
 	AddToot(accountId int, toot *Toot) error
 	GetPostCount(user string) (uint, error)
@@ -238,6 +239,31 @@ func (repo *Repo) getAccount(user string) (*Account, error) {
 		}
 	}
 	return &res, nil
+}
+
+func (repo *Repo) BruteDeleteAccount(accountId int) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
+	_, err := repo.db.Exec(`DELETE FROM toots WHERE account_id=?`, accountId)
+	if err != nil {
+		return err
+	}
+	_, err = repo.db.Exec(`DELETE FROM feed_posts WHERE account_id=?`, accountId)
+	if err != nil {
+		return err
+	}
+	_, err = repo.db.Exec(`DELETE FROM followers WHERE account_id=?`, accountId)
+	if err != nil {
+		return err
+	}
+	_, err = repo.db.Exec(`DELETE FROM accounts WHERE id=?`, accountId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (repo *Repo) GetAccountsPage(offset, limit int) ([]*Account, int, error) {

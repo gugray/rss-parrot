@@ -3,7 +3,9 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"net/http"
+	"rss_parrot/dal"
 	"rss_parrot/dto"
 	"rss_parrot/logic"
 	"rss_parrot/shared"
@@ -13,17 +15,20 @@ type apiHandlerGroup struct {
 	cfg    *shared.Config
 	logger shared.ILogger
 	fdfol  logic.IFeedFollower
+	repo   dal.IRepo
 }
 
 func NewApiHandlerGroup(
 	cfg *shared.Config,
 	logger shared.ILogger,
 	fdfol logic.IFeedFollower,
+	repo dal.IRepo,
 ) IHandlerGroup {
 	res := apiHandlerGroup{
 		cfg:    cfg,
 		logger: logger,
 		fdfol:  fdfol,
+		repo:   repo,
 	}
 	return &res
 }
@@ -35,6 +40,7 @@ func (hg *apiHandlerGroup) Prefix() string {
 func (hg *apiHandlerGroup) GroupDefs() []handlerDef {
 	return []handlerDef{
 		{"POST", "/feeds", func(w http.ResponseWriter, r *http.Request) { hg.postFeeds(w, r) }},
+		{"DELETE", "/accounts/{account}", func(w http.ResponseWriter, r *http.Request) { hg.deleteAccount(w, r) }},
 	}
 }
 
@@ -74,9 +80,45 @@ func (hg *apiHandlerGroup) authMW(next http.Handler) http.Handler {
 	})
 }
 
+func (hg *apiHandlerGroup) deleteAccount(w http.ResponseWriter, r *http.Request) {
+	var err error
+	hg.logger.Infof("Handling %s %s", r.Method, r.URL.Path)
+
+	accountName := mux.Vars(r)["account"]
+	if accountName == "" {
+		msg := "Missing account parameter"
+		hg.logger.Info(msg)
+		writeErrorResponse(w, msg, http.StatusBadRequest)
+	}
+
+	var acct *dal.Account
+	acct, err = hg.repo.GetAccount(accountName)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to brute-delete account: %v", err)
+		hg.logger.Error(msg)
+		writeErrorResponse(w, msg, http.StatusInternalServerError)
+		return
+	}
+	if acct == nil {
+		msg := fmt.Sprintf("Account not found: %s", accountName)
+		writeErrorResponse(w, msg, http.StatusNotFound)
+		return
+	}
+
+	err = hg.repo.BruteDeleteAccount(acct.Id)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to brute-delete account: %v", err)
+		hg.logger.Error(msg)
+		writeErrorResponse(w, msg, http.StatusInternalServerError)
+		return
+	}
+
+	writeJsonResponse(hg.logger, w, "OK")
+}
+
 func (hg *apiHandlerGroup) postFeeds(w http.ResponseWriter, r *http.Request) {
 	var err error
-	hg.logger.Info("POST /api/feeds: Request received")
+	hg.logger.Infof("Handling %s %s", r.Method, r.URL.Path)
 
 	// Read and parse body
 	bodyBytes := readBody(hg.logger, w, r)
