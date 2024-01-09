@@ -53,12 +53,18 @@ func NewInbox(
 	messenger IMessenger,
 	fdfol IFeedFollower,
 ) IInbox {
+
 	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/u/([^/]+)/?")
 	reHttps := regexp.MustCompile("https?://[^ ]+")
 	res := inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt, metrics, udir,
 		keyStore, sender, messenger, fdfol,
 		reUserUrlParser, reHttps}
+
 	go res.purgeOldAvititiesLoop()
+
+	// If we don't update at startup, metric will be 0 until first time someone follows a feed
+	res.updateFollowerMetric()
+
 	return &res
 }
 
