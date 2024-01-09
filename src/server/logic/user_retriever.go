@@ -17,6 +17,8 @@ type IUserRetriever interface {
 	Retrieve(userUrl string) (info *dto.UserInfo, err error)
 }
 
+const retrieveTimeoutSec = 10
+
 type userRetriever struct {
 	cfg       *shared.Config
 	userAgent shared.IUserAgent
@@ -65,7 +67,8 @@ func (ur *userRetriever) Retrieve(userUrl string) (info *dto.UserInfo, err error
 		return nil, err
 	}
 
-	client := &http.Client{}
+	client := http.Client{}
+	client.Timeout = time.Second * retrieveTimeoutSec
 	var resp *http.Response
 	if resp, err = client.Do(req); err != nil {
 		return nil, err

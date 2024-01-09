@@ -30,6 +30,10 @@ const (
 	FsBanned          = -3
 )
 
+const (
+	feedOrSiteTimeoutSec = 10
+)
+
 type IFeedFollower interface {
 	GetAccountForFeed(urlStr string) (acct *dal.Account, status FeedStatus, err error)
 }
@@ -180,7 +184,9 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, err
 	res.ParrotHandle = shared.GetHandleFromUrl(res.Url)
 
 	// Get the page
-	resp, err := http.Get(urlStr)
+	client := http.Client{}
+	client.Timeout = feedOrSiteTimeoutSec
+	resp, err := client.Get(urlStr)
 	if err != nil {
 		ff.logger.Warnf("Failed to get %s: %v", siteUrl, err)
 		return nil, nil, err
@@ -506,7 +512,8 @@ func (ff *feedFollower) fetchParseFeed(feedUrl string) (feed *gofeed.Feed, err e
 	}
 	ff.userAgent.AddUserAgent(req)
 
-	client := &http.Client{}
+	client := http.Client{}
+	client.Timeout = time.Second * feedOrSiteTimeoutSec
 	var resp *http.Response
 	if resp, err = client.Do(req); err != nil {
 		return nil, err

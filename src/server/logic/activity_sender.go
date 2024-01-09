@@ -19,6 +19,8 @@ type IActivitySender interface {
 	Send(privKey *rsa.PrivateKey, sendingUser, inboxUrl string, activity *dto.ActivityOut) error
 }
 
+const activityTimeoutSec = 10
+
 type activitySender struct {
 	cfg       *shared.Config
 	logger    shared.ILogger
@@ -77,7 +79,8 @@ func (sender *activitySender) Send(
 		return err
 	}
 
-	client := &http.Client{}
+	client := http.Client{}
+	client.Timeout = time.Second * activityTimeoutSec
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
