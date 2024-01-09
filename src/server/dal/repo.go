@@ -6,10 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mattn/go-sqlite3"
-	"github.com/microcosm-cc/bluemonday"
-	"html"
 	"rss_parrot/shared"
-	"strings"
 	"sync"
 	"time"
 )
@@ -134,12 +131,12 @@ func (repo *Repo) InitUpdateDb() {
 			repo.logger.Errorf("Failed to execute init script %s: %v", fn, err)
 			panic(err)
 		}
-		if nextVer == 5 {
-			if err = repo.upgrade05(); err != nil {
-				repo.logger.Errorf("Failed to execute upgrade code to %d: %v", nextVer, err)
-				panic(err)
-			}
-		}
+		//if nextVer == 5 {
+		//	if err = repo.upgrade05(); err != nil {
+		//		repo.logger.Errorf("Failed to execute upgrade code to %d: %v", nextVer, err)
+		//		panic(err)
+		//	}
+		//}
 		_, err = repo.db.Exec("UPDATE sys_params SET val=? WHERE name='schema_ver'", nextVer)
 		if err != nil {
 			repo.logger.Errorf("Failed to update schema_ver to %d: %v", nextVer, err)
@@ -157,80 +154,6 @@ type postToFix struct {
 	postGuidHash int
 	title        string
 	description  string
-}
-
-func (repo *Repo) upgrade05() error {
-
-	toFix := make([]postToFix, 0, 6000)
-
-	query := `SELECT account_id, post_guid_hash, title, description FROM feed_posts`
-	rows, err := repo.db.Query(query)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		tf := postToFix{}
-		err = rows.Scan(&tf.accountId, &tf.postGuidHash, &tf.title, &tf.description)
-		if err = rows.Err(); err != nil {
-			return err
-		}
-		if !strings.ContainsAny(tf.title, "&") && !strings.Contains(tf.description, "&") {
-			continue
-		}
-		toFix = append(toFix, tf)
-	}
-
-	repo.logger.Printf("%d feed posts to fix", len(toFix))
-
-	go repo.upgrade05B(toFix)
-
-	return nil
-}
-
-func (repo *Repo) upgrade05B(toFix []postToFix) {
-
-	p := bluemonday.StrictPolicy()
-
-	fixText := func(str string) string {
-		fixed := p.Sanitize(str)
-		fixed = html.UnescapeString(fixed)
-		fixed = strings.TrimSpace(fixed)
-		return fixed
-	}
-
-	for i := range toFix {
-		toFix[i].title = fixText(toFix[i].title)
-		toFix[i].description = fixText(toFix[i].description)
-	}
-
-	fixBatch := func(batch []postToFix) {
-		repo.muDb.Lock()
-		defer repo.muDb.Unlock()
-		for _, tf := range toFix {
-			_, err := repo.db.Exec(`UPDATE feed_posts SET title=?, description=?
-				WHERE account_id=? AND post_guid_hash=?`, tf.title, tf.description, tf.accountId, tf.postGuidHash)
-			if err != nil {
-				repo.logger.Errorf("Failed to fix post: account_id: %d, post_guid_hash: %d", tf.accountId, tf.postGuidHash)
-			}
-		}
-	}
-
-	from := 0
-	batchSize := 512
-	for {
-		repo.logger.Printf("Fixing batch of %d from %d", batchSize, from)
-		to := min(from+batchSize, len(toFix))
-		batch := toFix[from:to]
-		fixBatch(batch)
-		from = from + batchSize
-		if from >= len(toFix) {
-			break
-		}
-		time.Sleep(time.Second * 2)
-	}
-	repo.logger.Printf("All records fixed")
 }
 
 func (repo *Repo) mustAddBuiltInUsers() {
