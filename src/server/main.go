@@ -63,7 +63,9 @@ func main() {
 		fx.Invoke(
 			registerHooks,
 			func(repo dal.IRepo) { repo.InitUpdateDb() },
-			func(*http.Server) {},
+			func(*http.Server) {
+				// Empty function needed so server gets instantiated
+			},
 			test,
 		),
 		fx.ErrorHook(&initErrorHandler{}),
@@ -125,4 +127,5 @@ func registerHooks(lc fx.Lifecycle, metrics logic.IMetrics) {
 }
 
 func test(ff logic.IFeedFollower, repo dal.IRepo) {
+	// Used on an ad-hoc basis; keeping here for convenience
 }

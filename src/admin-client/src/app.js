@@ -1,5 +1,4 @@
-import {feedUrls} from "./urls-smallweb.js";
-// import {feedUrls} from "./urls-debug.js";
+import {feedUrls} from "./urls-debug.js";
 
 const elmTxtServerUrl = document.getElementById("txtServerUrl");
 const elmTxtApiKey = document.getElementById("txtApiKey");
