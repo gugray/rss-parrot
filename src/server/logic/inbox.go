@@ -19,6 +19,12 @@ type IInbox interface {
 	HandleCreateNote(actBase dto.ActivityInBase, senderInfo *dto.UserInfo, bodyBytes []byte) (string, error)
 }
 
+const (
+	firstPurgeDelayMin     = 1
+	purgeActivitiesLoopMin = 60
+	activitiesKeptHr       = 48
+)
+
 type inbox struct {
 	cfg             *shared.Config
 	logger          shared.ILogger
@@ -49,9 +55,24 @@ func NewInbox(
 ) IInbox {
 	reUserUrlParser := regexp.MustCompile("https://" + cfg.Host + "/u/([^/]+)/?")
 	reHttps := regexp.MustCompile("https?://[^ ]+")
-	return &inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt, metrics, udir,
+	res := inbox{cfg, logger, shared.IdBuilder{cfg.Host}, repo, txt, metrics, udir,
 		keyStore, sender, messenger, fdfol,
 		reUserUrlParser, reHttps}
+	go res.purgeOldAvititiesLoop()
+	return &res
+}
+
+func (ib *inbox) purgeOldAvititiesLoop() {
+	time.Sleep(time.Minute * firstPurgeDelayMin)
+	for {
+		before := time.Now().Add(-activitiesKeptHr * time.Hour)
+		ib.logger.Infof("Purging handled activities from before %s", before.Format(time.RFC3339))
+		err := ib.repo.DeleteHandledActivities(before)
+		if err != nil {
+			ib.logger.Errorf("Failed to purge old handled activities: %v", err)
+		}
+		time.Sleep(time.Minute * purgeActivitiesLoopMin)
+	}
 }
 
 func (ib *inbox) HandleFollow(

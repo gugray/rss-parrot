@@ -48,6 +48,7 @@ type IRepo interface {
 	GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, int, error)
 	DeleteTootQueueItem(id int) error
 	MarkActivityHandled(id string, when time.Time) (alreadyHandled bool, err error)
+	DeleteHandledActivities(before time.Time) error
 }
 
 type Repo struct {
@@ -741,5 +742,13 @@ func (repo *Repo) MarkActivityHandled(id string, when time.Time) (alreadyHandled
 	}
 
 	return
+}
 
+func (repo *Repo) DeleteHandledActivities(before time.Time) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
+	_, err := repo.db.Exec(`DELETE FROM handled_activities WHERE handled_at<?`, before)
+	return err
 }
