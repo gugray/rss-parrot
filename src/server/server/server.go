@@ -68,8 +68,14 @@ func NewMux(groups []IHandlerGroup, logger shared.ILogger) *mux.Router {
 		}
 	}
 	// Static files with error logging
+	// HEAD requests: 405
 	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handleStatic(logger, notFoundHandler, w, r)
+		if r.Method == "GET" {
+			handleStatic(logger, notFoundHandler, w, r)
+		} else if r.Method == "HEAD" {
+			logger.Infof("Rejecting HEAD: %s", r.URL.Path)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	})
 	return router
 }
