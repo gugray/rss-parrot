@@ -540,30 +540,44 @@ func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 
 func (ff *feedFollower) feedCheckLoop() {
 	for {
-		var err error
-		var acct *dal.Account
-		var total int
-		if acct, total, err = ff.repo.GetAccountToCheck(time.Now()); err != nil {
-			ff.logger.Errorf("Failed to get next feed due for checking: %v", err)
-			time.Sleep(feedCheckLoopIdleWakeSec * time.Second)
-			continue
-		}
-		ff.metrics.CheckableFeedCount(total)
-		if acct == nil {
-			ff.logger.Debugf("No feeds to check; sleeping %d seconds", feedCheckLoopIdleWakeSec)
-			time.Sleep(feedCheckLoopIdleWakeSec * time.Second)
-			continue
-		}
-		lastUpdated := acct.FeedLastUpdated
-		err = ff.updateFeed(acct)
-		if err != nil {
-			ff.logger.Errorf("Error updating feed: %s: %v", acct.Handle, err)
-			// Reschedule for updating as if there was no new post
-			nextCheckDue := ff.getNextCheckTime(lastUpdated)
-			if err = ff.repo.UpdateAccountFeedTimes(acct.Id, lastUpdated, nextCheckDue); err != nil {
-				ff.logger.Errorf("Failed to reschedule for checking after error: %s: %v", acct.Handle, err)
-			}
-		}
-		// If no error, updateFeed has set next due date for checking
+		ff.feedCheckLoopInner()
 	}
+}
+
+func (ff *feedFollower) feedCheckLoopInner() {
+
+	defer func() {
+		if r := recover(); r != nil {
+			const panicSleepSec = 10
+			ff.logger.Errorf("Feed check cycle panicked: %v", r)
+			ff.logger.Infof("Sleeping %d seconds after panic", panicSleepSec)
+			time.Sleep(time.Second * panicSleepSec)
+		}
+	}()
+
+	var err error
+	var acct *dal.Account
+	var total int
+	if acct, total, err = ff.repo.GetAccountToCheck(time.Now()); err != nil {
+		ff.logger.Errorf("Failed to get next feed due for checking: %v", err)
+		time.Sleep(feedCheckLoopIdleWakeSec * time.Second)
+		return
+	}
+	ff.metrics.CheckableFeedCount(total)
+	if acct == nil {
+		ff.logger.Debugf("No feeds to check; sleeping %d seconds", feedCheckLoopIdleWakeSec)
+		time.Sleep(feedCheckLoopIdleWakeSec * time.Second)
+		return
+	}
+	lastUpdated := acct.FeedLastUpdated
+	err = ff.updateFeed(acct)
+	if err != nil {
+		ff.logger.Errorf("Error updating feed: %s: %v", acct.Handle, err)
+		// Reschedule for updating as if there was no new post
+		nextCheckDue := ff.getNextCheckTime(lastUpdated)
+		if err = ff.repo.UpdateAccountFeedTimes(acct.Id, lastUpdated, nextCheckDue); err != nil {
+			ff.logger.Errorf("Failed to reschedule for checking after error: %s: %v", acct.Handle, err)
+		}
+	}
+	// If no error, updateFeed has set next due date for checking
 }
