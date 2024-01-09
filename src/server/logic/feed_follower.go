@@ -506,6 +506,9 @@ func (ff *feedFollower) fetchParseFeed(feedUrl string) (feed *gofeed.Feed, err e
 	}
 	ff.userAgent.AddUserAgent(req)
 
+	ua := req.Header.Get("User-Agent")
+	ff.logger.Printf("UserAgent: %s", ua)
+
 	client := &http.Client{}
 	var resp *http.Response
 	if resp, err = client.Do(req); err != nil {
