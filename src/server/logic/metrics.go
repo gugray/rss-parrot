@@ -63,7 +63,7 @@ func NewMetrics(cfg *shared.Config) IMetrics {
 	res.feedsRequested = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "feeds_requested",
 		Help: "Number of feeds requested",
-	}, []string{"new"})
+	}, []string{"label"})
 	prometheus.Register(res.feedsRequested)
 
 	res.feedsUpdated = prometheus.NewCounter(prometheus.CounterOpts{
