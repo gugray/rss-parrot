@@ -29,6 +29,7 @@ func NewUserAgent(cfg *Config) IUserAgent {
 func buildUserAgentString(host string) string {
 	versionBytes, _ := os.ReadFile(versionFileName)
 	versionStr := string(versionBytes)
+	versionStr = strings.TrimSpace(versionStr)
 	versionStr = strings.TrimPrefix(versionStr, "v")
 	return fmt.Sprintf(userAgentTemplate, versionStr, host)
 }
