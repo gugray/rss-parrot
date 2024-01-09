@@ -421,7 +421,10 @@ func (ff *feedFollower) filterFeed(feed *gofeed.Feed) FeedStatus {
 func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, status FeedStatus, err error) {
 
 	ff.logger.Infof("Retrieving site information: %s", urlStr)
-	ff.metrics.FeedRequested()
+
+	feedLabel := "failed"
+	defer ff.metrics.FeedRequested(feedLabel)
+
 	acct = nil
 	status = FsError
 	err = nil
@@ -469,10 +472,6 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, sta
 
 	ff.logger.Infof("Account is %s; newly created: %v", si.ParrotHandle, isNew)
 
-	if isNew {
-		ff.metrics.NewFeedAdded()
-	}
-
 	acct, err = ff.repo.GetAccount(si.ParrotHandle)
 	if err != nil {
 		ff.logger.Errorf("Failed to load account for %s; was newly created: %v", si.ParrotHandle, isNew)
@@ -489,8 +488,10 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, sta
 
 	if isNew {
 		status = FsNew
+		feedLabel = "new"
 	} else {
 		status = FsAlreadyFollowed
+		feedLabel = "existing"
 	}
 	return
 }

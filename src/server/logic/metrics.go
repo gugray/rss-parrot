@@ -10,10 +10,10 @@ type IMetrics interface {
 	StartWebRequestIn(label string) IRequestObserver
 	StartApubRequestIn(label string) IRequestObserver
 	StartApubRequestOut(label string) IRequestObserver
-	FeedRequested()
-	NewFeedAdded()
+	FeedRequested(label string)
 	FeedUpdated()
 	NewPostSaved()
+	ServiceStarted()
 	TotalFollowers(count int)
 	TootQueueLength(length int)
 	CheckableFeedCount(count int)
@@ -28,10 +28,10 @@ type metrics struct {
 	webRequestsIn      *prometheus.HistogramVec
 	apubRequestsIn     *prometheus.HistogramVec
 	apubRequestsOut    *prometheus.HistogramVec
-	feedsRequested     prometheus.Counter
-	newFeedsAdded      prometheus.Counter
+	feedsRequested     *prometheus.CounterVec
 	feedsUpdated       prometheus.Counter
 	newPostsSaved      prometheus.Counter
+	serviceStarted     prometheus.Counter
 	totalFollowers     prometheus.Gauge
 	tootQueueLength    prometheus.Gauge
 	checkableFeedCount prometheus.Gauge
@@ -60,17 +60,11 @@ func NewMetrics(cfg *shared.Config) IMetrics {
 	}, []string{"label"})
 	prometheus.Register(res.apubRequestsOut)
 
-	res.feedsRequested = prometheus.NewCounter(prometheus.CounterOpts{
+	res.feedsRequested = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "feeds_requested",
 		Help: "Number of feeds requested",
-	})
+	}, []string{"new"})
 	prometheus.Register(res.feedsRequested)
-
-	res.newFeedsAdded = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "new_feeds_added",
-		Help: "Number of new feeds added",
-	})
-	prometheus.Register(res.newFeedsAdded)
 
 	res.feedsUpdated = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "feeds_updated",
@@ -83,6 +77,12 @@ func NewMetrics(cfg *shared.Config) IMetrics {
 		Help: "Number of new posts saved",
 	})
 	prometheus.Register(res.newPostsSaved)
+
+	res.serviceStarted = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "service_started",
+		Help: "Service has started up",
+	})
+	prometheus.Register(res.serviceStarted)
 
 	res.totalFollowers = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "total_follower_count",
@@ -129,16 +129,12 @@ func (m *metrics) StartApubRequestOut(label string) IRequestObserver {
 	return &requestObserver{label, time.Now(), m.apubRequestsOut}
 }
 
-func (m *metrics) FeedRequested() {
-	m.feedsRequested.Add(1)
+func (m *metrics) FeedRequested(label string) {
+	m.feedsRequested.WithLabelValues(label).Add(1)
 }
 
 func (m *metrics) TootQueueLength(length int) {
 	m.tootQueueLength.Set(float64(length))
-}
-
-func (m *metrics) NewFeedAdded() {
-	m.newFeedsAdded.Add(1)
 }
 
 func (m *metrics) FeedUpdated() {
@@ -147,6 +143,10 @@ func (m *metrics) FeedUpdated() {
 
 func (m *metrics) NewPostSaved() {
 	m.newPostsSaved.Add(1)
+}
+
+func (m *metrics) ServiceStarted() {
+	m.serviceStarted.Add(1)
 }
 
 func (m *metrics) TotalFollowers(count int) {

@@ -107,11 +107,12 @@ func initLogger(cfg *shared.Config) *log.Logger {
 	return logger
 }
 
-func registerHooks(lc fx.Lifecycle) {
+func registerHooks(lc fx.Lifecycle, metrics logic.IMetrics) {
 	lc.Append(
 		fx.Hook{
 			OnStart: func(context.Context) error {
 				logger.Printf("Application starting up")
+				metrics.ServiceStarted()
 				return nil
 			},
 			OnStop: func(context.Context) error {
