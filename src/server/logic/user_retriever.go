@@ -18,13 +18,14 @@ type IUserRetriever interface {
 }
 
 type userRetriever struct {
-	cfg      *shared.Config
-	keyStore IKeyStore
-	idb      shared.IdBuilder
+	cfg       *shared.Config
+	userAgent shared.IUserAgent
+	keyStore  IKeyStore
+	idb       shared.IdBuilder
 }
 
-func NewUserRetriever(cfg *shared.Config, keyStore IKeyStore) IUserRetriever {
-	return &userRetriever{cfg, keyStore, shared.IdBuilder{cfg.Host}}
+func NewUserRetriever(cfg *shared.Config, userAgent shared.IUserAgent, keyStore IKeyStore) IUserRetriever {
+	return &userRetriever{cfg, userAgent, keyStore, shared.IdBuilder{cfg.Host}}
 }
 
 func (ur *userRetriever) Retrieve(userUrl string) (info *dto.UserInfo, err error) {
@@ -38,6 +39,7 @@ func (ur *userRetriever) Retrieve(userUrl string) (info *dto.UserInfo, err error
 	if req, err = http.NewRequest("GET", userUrl, nil); err != nil {
 		return nil, err
 	}
+	ur.userAgent.AddUserAgent(req)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("host", host)
 	req.Header.Set("date", dateStr)
@@ -68,11 +70,11 @@ func (ur *userRetriever) Retrieve(userUrl string) (info *dto.UserInfo, err error
 	if resp, err = client.Do(req); err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to get user profile; got status %v", resp.StatusCode)
 	}
 
-	defer resp.Body.Close()
 	var bodyBytes []byte
 	if bodyBytes, err = io.ReadAll(resp.Body); err != nil {
 		return nil, err

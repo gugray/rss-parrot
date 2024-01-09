@@ -46,6 +46,7 @@ type SiteInfo struct {
 type feedFollower struct {
 	cfg       *shared.Config
 	logger    shared.ILogger
+	userAgent shared.IUserAgent
 	repo      dal.IRepo
 	messenger IMessenger
 	txt       texts.ITexts
@@ -56,6 +57,7 @@ type feedFollower struct {
 func NewFeedFollower(
 	cfg *shared.Config,
 	logger shared.ILogger,
+	userAgent shared.IUserAgent,
 	repo dal.IRepo,
 	messenger IMessenger,
 	txt texts.ITexts,
@@ -65,6 +67,7 @@ func NewFeedFollower(
 	ff := feedFollower{
 		cfg:       cfg,
 		logger:    logger,
+		userAgent: userAgent,
 		repo:      repo,
 		messenger: messenger,
 		txt:       txt,
@@ -156,9 +159,8 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, err
 	var err error
 
 	// First, let's see if this is the feed itself
-	fp := gofeed.NewParser()
 	var feed *gofeed.Feed
-	feed, err = fp.ParseURL(urlStr)
+	feed, err = ff.fetchParseFeed(urlStr)
 	if err == nil {
 		res.FeedUrl = urlStr
 		res.LastUpdated = getLastUpdated(feed)
@@ -206,7 +208,7 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, err
 	ff.getMetas(doc, &res)
 
 	// Get the feed to make sure it's there, and know when it's last changed
-	feed, err = fp.ParseURL(res.FeedUrl)
+	feed, err = ff.fetchParseFeed(res.FeedUrl)
 	if err != nil {
 		ff.logger.Warnf("Failed to retrieve and parse feed: %s, %v", res.FeedUrl, err)
 		return nil, nil, err
@@ -496,15 +498,36 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, sta
 	return
 }
 
+func (ff *feedFollower) fetchParseFeed(feedUrl string) (feed *gofeed.Feed, err error) {
+
+	var req *http.Request
+	if req, err = http.NewRequest("GET", feedUrl, nil); err != nil {
+		return nil, err
+	}
+	ff.userAgent.AddUserAgent(req)
+
+	client := &http.Client{}
+	var resp *http.Response
+	if resp, err = client.Do(req); err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed with status %v", resp.StatusCode)
+	}
+
+	fp := gofeed.NewParser()
+	return fp.Parse(resp.Body)
+}
+
 func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 
 	var err error
 	ff.logger.Infof("Updating account %s: %s", acct.Handle, acct.FeedUrl)
 	ff.metrics.FeedUpdated()
 
-	fp := gofeed.NewParser()
 	var feed *gofeed.Feed
-	if feed, err = fp.ParseURL(acct.FeedUrl); err != nil {
+	if feed, err = ff.fetchParseFeed(acct.FeedUrl); err != nil {
 		return err
 	}
 

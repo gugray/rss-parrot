@@ -20,14 +20,19 @@ type IActivitySender interface {
 }
 
 type activitySender struct {
-	cfg     *shared.Config
-	logger  shared.ILogger
-	metrics IMetrics
-	idb     shared.IdBuilder
+	cfg       *shared.Config
+	logger    shared.ILogger
+	userAgent shared.IUserAgent
+	metrics   IMetrics
+	idb       shared.IdBuilder
 }
 
-func NewActivitySender(cfg *shared.Config, logger shared.ILogger, metrics IMetrics) IActivitySender {
-	return &activitySender{cfg, logger, metrics, shared.IdBuilder{cfg.Host}}
+func NewActivitySender(cfg *shared.Config,
+	logger shared.ILogger,
+	userAgent shared.IUserAgent,
+	metrics IMetrics,
+) IActivitySender {
+	return &activitySender{cfg, logger, userAgent, metrics, shared.IdBuilder{cfg.Host}}
 }
 
 func (sender *activitySender) Send(
@@ -51,6 +56,7 @@ func (sender *activitySender) Send(
 	//fmt.Println(string(bodyJson))
 
 	req, err := http.NewRequest("POST", inboxUrl, bytes.NewBuffer(bodyJson))
+	sender.userAgent.AddUserAgent(req)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("host", host)
 	req.Header.Set("date", dateStr)

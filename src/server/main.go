@@ -41,6 +41,7 @@ func main() {
 		fx.Provide(
 			provideConfig,
 			provideLogger,
+			shared.NewUserAgent,
 			server.NewHTTPServer,
 			fx.Annotate(server.NewMux, fx.ParamTags(`group:"handler_group"`)),
 			logic.NewKeyStore,
