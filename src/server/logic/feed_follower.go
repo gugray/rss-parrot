@@ -431,7 +431,9 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, sta
 	ff.logger.Infof("Retrieving site information: %s", urlStr)
 
 	feedLabel := "failed"
-	defer ff.metrics.FeedRequested(feedLabel)
+	defer func() {
+		ff.metrics.FeedRequested(feedLabel)
+	}()
 
 	acct = nil
 	status = FsError
