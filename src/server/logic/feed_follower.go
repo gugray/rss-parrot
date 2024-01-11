@@ -185,7 +185,7 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, err
 
 	// Get the page
 	client := http.Client{}
-	client.Timeout = feedOrSiteTimeoutSec
+	client.Timeout = feedOrSiteTimeoutSec * time.Second
 	resp, err := client.Get(urlStr)
 	if err != nil {
 		ff.logger.Warnf("Failed to get %s: %v", siteUrl, err)
