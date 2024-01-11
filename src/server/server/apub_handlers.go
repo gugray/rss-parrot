@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"math/rand"
 	"net/http"
 	"regexp"
 	"rss_parrot/dto"
@@ -56,6 +57,7 @@ func (hg *apubHandlerGroup) GroupDefs() []handlerDef {
 		{"GET", "/u/{user}/outbox", func(w http.ResponseWriter, r *http.Request) { hg.getUserOutbox(w, r) }},
 		{"GET", "/u/{user}/followers", func(w http.ResponseWriter, r *http.Request) { hg.getUserFollowers(w, r) }},
 		{"GET", "/u/{user}/following", func(w http.ResponseWriter, r *http.Request) { hg.getUserFollowing(w, r) }},
+		{"GET", "/u/{user}/status/{id}", func(w http.ResponseWriter, r *http.Request) { hg.getUserStatus(w, r) }},
 		{"POST", "/u/{user}/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postInbox(w, r) }},
 		{"POST", "/inbox", func(w http.ResponseWriter, r *http.Request) { hg.postInbox(w, r) }},
 	}
@@ -117,11 +119,36 @@ func (hg *apubHandlerGroup) getUser(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(hg.logger, w, userInfo)
 }
 
+func logHeaders(r *http.Request, logger shared.ILogger) {
+	msg := "Headers in user/status request:"
+	for name, values := range r.Header {
+		for _, value := range values {
+			msg += fmt.Sprintf("\n%s: %s", name, value)
+		}
+	}
+	logger.Debug(msg)
+}
+
+func (hg *apubHandlerGroup) getUserStatus(w http.ResponseWriter, r *http.Request) {
+
+	hg.logger.Infof("Handling user status GET: %s", r.URL.Path)
+	obs := hg.metrics.StartApubRequestIn("user/status")
+	defer obs.Finish()
+
+	if rand.Float32() < 0.1 {
+		logHeaders(r, hg.logger)
+	}
+
+	writeErrorResponse(w, "The birb currently does not implement this", http.StatusMethodNotAllowed)
+}
+
 func (hg *apubHandlerGroup) getUserOutbox(w http.ResponseWriter, r *http.Request) {
 
 	hg.logger.Infof("Handling user outbox GET: %s", r.URL.Path)
 	obs := hg.metrics.StartApubRequestIn("user/outbox")
 	defer obs.Finish()
+
+	logHeaders(r, hg.logger)
 
 	userName := mux.Vars(r)["user"]
 	summary := hg.udir.GetOutboxSummary(userName)
