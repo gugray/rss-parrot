@@ -1,9 +1,11 @@
 package logic
 
 import (
+	"regexp"
 	"rss_parrot/dal"
 	"rss_parrot/dto"
 	"rss_parrot/shared"
+	"strconv"
 	"time"
 )
 
@@ -28,6 +30,7 @@ type messenger struct {
 	sender          IActivitySender
 	metrics         IMetrics
 	idb             shared.IdBuilder
+	reStatusId      *regexp.Regexp
 	newTootsInQueue chan struct{}
 	tqProgress      map[int]interface{}
 }
@@ -40,6 +43,7 @@ func NewMessenger(
 	sender IActivitySender,
 	metrics IMetrics,
 ) IMessenger {
+
 	m := messenger{
 		cfg:      cfg,
 		logger:   logger,
@@ -49,9 +53,13 @@ func NewMessenger(
 		metrics:  metrics,
 		idb:      shared.IdBuilder{cfg.Host},
 	}
+
+	m.reStatusId = regexp.MustCompile("^https://[^/]+/u/[^/]+/status/([0-9]+)$")
+
 	m.newTootsInQueue = make(chan struct{})
 	m.tqProgress = make(map[int]interface{})
 	go m.tootQueueLoop()
+
 	return &m
 }
 
@@ -67,7 +75,8 @@ func (m *messenger) SendMessageSync(byUser string, toInbox, msg string,
 	if len(tags) != 0 {
 		ptags = &tags
 	}
-	err := m.sendToInbox(byUser, to, cc, toInbox, &inReplyTo, published, msg, ptags)
+	id := m.repo.GetNextId()
+	err := m.sendToInbox(byUser, id, to, cc, toInbox, &inReplyTo, published, msg, ptags)
 	if err != nil {
 		m.logger.Errorf("Failed to send message to inbox %s", toInbox)
 	}
@@ -163,13 +172,33 @@ func (m *messenger) tootQueueLoop() {
 	}
 }
 
+func (m *messenger) getIdVal(statusIdUrl string) uint64 {
+	groups := m.reStatusId.FindStringSubmatch(statusIdUrl)
+	if groups == nil {
+		return m.repo.GetNextId()
+	}
+	idStr := groups[1]
+	var idVal int64
+	var err error
+	if idVal, err = strconv.ParseInt(idStr, 10, 64); err != nil {
+		return m.repo.GetNextId()
+	}
+	return uint64(idVal)
+}
+
 func (m *messenger) sendQueuedToot(item *dal.TootQueueItem, tootSent chan int) {
 
+	var err error
 	idb := shared.IdBuilder{m.cfg.Host}
 	to := []string{shared.ActivityPublic}
 	userFollowers := idb.UserFollowers(item.SendingUser)
-	err := m.sendToInbox(
+
+	// This should never fail, but if it does, we just make up a new ID
+	idVal := m.getIdVal(item.StatusId)
+
+	err = m.sendToInbox(
 		item.SendingUser,
+		idVal,
 		to,
 		[]string{userFollowers},
 		item.ToInbox,
@@ -186,7 +215,7 @@ func (m *messenger) sendQueuedToot(item *dal.TootQueueItem, tootSent chan int) {
 	tootSent <- item.Id
 }
 
-func (m *messenger) sendToInbox(byUser string, to, cc []string, toInbox string,
+func (m *messenger) sendToInbox(byUser string, idVal uint64, to, cc []string, toInbox string,
 	inReplyTo *string, published, message string, tag *[]dto.Tag) error {
 
 	m.logger.Infof("Sending to inbox: %s", toInbox)
@@ -196,9 +225,8 @@ func (m *messenger) sendToInbox(byUser string, to, cc []string, toInbox string,
 		return err
 	}
 
-	id := m.repo.GetNextId()
 	note := &dto.Note{
-		Id:           m.idb.UserStatus(byUser, id),
+		Id:           m.idb.UserStatus(byUser, idVal),
 		Type:         "Note",
 		Published:    published,
 		Summary:      nil,
@@ -211,7 +239,7 @@ func (m *messenger) sendToInbox(byUser string, to, cc []string, toInbox string,
 	}
 	act := &dto.ActivityOut{
 		Context: "https://www.w3.org/ns/activitystreams",
-		Id:      m.idb.UserStatusActivity(byUser, id),
+		Id:      m.idb.UserStatusActivity(byUser, idVal),
 		Type:    "Create",
 		Actor:   m.idb.UserUrl(byUser),
 		To:      &to,
