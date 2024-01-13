@@ -6,6 +6,7 @@ import (
 	"rss_parrot/dto"
 	"rss_parrot/shared"
 	"rss_parrot/texts"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -21,6 +22,7 @@ type IUserDirectory interface {
 	GetOutboxSummary(user string) *dto.OrderedListSummary
 	GetFollowersSummary(user string) *dto.OrderedListSummary
 	GetFollowingSummary(user string) *dto.OrderedListSummary
+	GetUserStatus(user, statusId string) (*dto.Note, error)
 	AcceptFollower(followActId, followerUserUrl, followerInbox, followedUser string) error
 }
 
@@ -175,6 +177,44 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 	}
 
 	return &resp
+}
+
+func (udir *userDirectory) GetUserStatus(user, statusId string) (*dto.Note, error) {
+
+	var err error
+	var statusIdVal int64
+	var toot *dal.Toot
+
+	if statusIdVal, err = strconv.ParseInt(statusId, 10, 64); err != nil {
+		return nil, nil
+	}
+
+	if toot, err = udir.repo.GetToot(user, statusId); err != nil {
+		return nil, err
+	}
+	if toot == nil {
+		return nil, nil
+	}
+
+	// Doing this here is a bit ugly / not-DRY
+	// There should be a single piece of code that creates the note when:
+	// - Toot is actually sent
+	// - Status is retrieved
+	// For now, good enough.
+
+	note := &dto.Note{
+		Id:           udir.idb.UserStatus(user, uint64(statusIdVal)),
+		Type:         "Note",
+		Published:    toot.TootedAt.Format(time.RFC3339), // Check: UTC?
+		Summary:      nil,
+		AttributedTo: udir.idb.UserUrl(user),
+		InReplyTo:    nil,
+		Content:      toot.Content,
+		To:           []string{shared.ActivityPublic},
+		Cc:           []string{udir.idb.UserFollowers(user)},
+		Tag:          nil,
+	}
+	return note, nil
 }
 
 func (udir *userDirectory) GetOutboxSummary(user string) *dto.OrderedListSummary {

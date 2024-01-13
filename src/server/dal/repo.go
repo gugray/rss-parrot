@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const schemaVer = 5
+const schemaVer = 6
 
 //go:embed scripts/*
 var scripts embed.FS
@@ -26,6 +26,7 @@ type IRepo interface {
 	BruteDeleteAccount(accountId int) error
 	GetAccountsPage(offset, limit int) ([]*Account, int, error)
 	AddToot(accountId int, toot *Toot) error
+	GetToot(user string, statusId string) (*Toot, error)
 	GetPostCount(user string) (uint, error)
 	GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, error)
 	GetFeedLastUpdated(accountId int) (time.Time, error)
@@ -344,6 +345,30 @@ func (repo *Repo) AddToot(accountId int, toot *Toot) error {
 		return err
 	}
 	return nil
+}
+
+func (repo *Repo) GetToot(user string, statusId string) (*Toot, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
+	query := `SELECT post_guid_hash, tooted_at, status_id, content
+		FROM toots JOIN accounts ON toots.account_id=accounts.id AND accounts.handle=?`
+	rows, err := repo.db.Query(query, user)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		t := Toot{}
+		err = rows.Scan(&t.PostGuidHash, &t.TootedAt, &t.StatusId, &t.Content)
+		if err = rows.Err(); err != nil {
+			return nil, err
+		}
+		return &t, nil
+	}
+	return nil, nil
 }
 
 func (repo *Repo) GetPostCount(user string) (uint, error) {

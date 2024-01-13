@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"math/rand"
 	"net/http"
 	"regexp"
 	"rss_parrot/dto"
@@ -119,27 +118,30 @@ func (hg *apubHandlerGroup) getUser(w http.ResponseWriter, r *http.Request) {
 	writeJsonResponse(hg.logger, w, userInfo)
 }
 
-func logHeaders(r *http.Request, logger shared.ILogger) {
-	msg := "Headers in user/status request:"
-	for name, values := range r.Header {
-		for _, value := range values {
-			msg += fmt.Sprintf("\n%s: %s", name, value)
-		}
-	}
-	logger.Debug(msg)
-}
-
 func (hg *apubHandlerGroup) getUserStatus(w http.ResponseWriter, r *http.Request) {
 
 	hg.logger.Infof("Handling user status GET: %s", r.URL.Path)
 	obs := hg.metrics.StartApubRequestIn("user/status")
 	defer obs.Finish()
 
-	if rand.Float32() < 0.1 {
-		logHeaders(r, hg.logger)
+	userName := mux.Vars(r)["user"]
+	statusId := mux.Vars(r)["id"]
+
+	var err error
+	var note *dto.Note
+	if note, err = hg.udir.GetUserStatus(userName, statusId); err != nil {
+		hg.logger.Infof("Error retrieving status %s/%s: %v", userName, statusId, err)
+		writeErrorResponse(w, internalErrorStr, http.StatusInternalServerError)
+		return
 	}
 
-	writeErrorResponse(w, "The birb currently does not implement this", http.StatusMethodNotAllowed)
+	if note == nil {
+		hg.logger.Infof("User status not found: %s/%s", userName, statusId)
+		writeErrorResponse(w, "User or status not found", http.StatusNotFound)
+		return
+	}
+
+	writeJsonResponse(hg.logger, w, note)
 }
 
 func (hg *apubHandlerGroup) getUserOutbox(w http.ResponseWriter, r *http.Request) {
@@ -147,8 +149,6 @@ func (hg *apubHandlerGroup) getUserOutbox(w http.ResponseWriter, r *http.Request
 	hg.logger.Infof("Handling user outbox GET: %s", r.URL.Path)
 	obs := hg.metrics.StartApubRequestIn("user/outbox")
 	defer obs.Finish()
-
-	logHeaders(r, hg.logger)
 
 	userName := mux.Vars(r)["user"]
 	summary := hg.udir.GetOutboxSummary(userName)

@@ -74,14 +74,14 @@ func getRecipient(raw any) ([]string, error) {
 }
 
 type ActivityInBase struct {
-	Id     string `json:"id"`
-	Type   string `json:"type"`
-	Actor  string `json:"actor"`
-	RawTo  any    `json:"to"`
-	RawCc  any    `json:"cc"`
-	Object any    `json:"object"`
-	To     []string
-	Cc     []string
+	Id     string   `json:"id"`
+	Type   string   `json:"type"`
+	Actor  string   `json:"actor"`
+	To     []string `json:"-"`
+	RawTo  any      `json:"to"`
+	Cc     []string `json:"-"`
+	RawCc  any      `json:"cc"`
+	Object any      `json:"object"`
 }
 
 func (x *ActivityInBase) UnmarshalJSON(data []byte) error {
@@ -101,14 +101,14 @@ func (x *ActivityInBase) UnmarshalJSON(data []byte) error {
 }
 
 type ActivityIn[T any] struct {
-	Id     string `json:"id"`
-	Type   string `json:"type"`
-	Actor  string `json:"actor"`
-	RawTo  any    `json:"to"`
-	RawCc  any    `json:"cc"`
-	Object T      `json:"object"`
-	To     []string
-	Cc     []string
+	Id     string   `json:"id"`
+	Type   string   `json:"type"`
+	Actor  string   `json:"actor"`
+	To     []string `json:"-"`
+	RawTo  any      `json:"to"`
+	Cc     []string `json:"-"`
+	RawCc  any      `json:"cc"`
+	Object T        `json:"object"`
 }
 
 func (x *ActivityIn[T]) UnmarshalJSON(data []byte) error {
@@ -138,18 +138,18 @@ type ActivityOut struct {
 }
 
 type Note struct {
-	Id           string  `json:"id"`
-	Type         string  `json:"type"`
-	Published    string  `json:"published"`
-	Summary      *string `json:"summary"`
-	AttributedTo string  `json:"attributedTo"`
-	InReplyTo    *string `json:"inReplyTo"`
-	Content      string  `json:"content"`
-	RawTo        any     `json:"to"`
-	RawCc        any     `json:"cc"`
-	Tag          *[]Tag  `json:"tag,omitempty"`
-	To           []string
-	Cc           []string
+	Id           string   `json:"id"`
+	Type         string   `json:"type"`
+	Published    string   `json:"published"`
+	Summary      *string  `json:"summary"`
+	AttributedTo string   `json:"attributedTo"`
+	InReplyTo    *string  `json:"inReplyTo"`
+	To           []string `json:"-"`
+	RawTo        any      `json:"to"`
+	Cc           []string `json:"-"`
+	RawCc        any      `json:"cc"`
+	Content      string   `json:"content"`
+	Tag          *[]Tag   `json:"tag,omitempty"`
 }
 
 func (x *Note) UnmarshalJSON(data []byte) error {
