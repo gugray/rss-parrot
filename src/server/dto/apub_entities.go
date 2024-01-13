@@ -57,6 +57,9 @@ type OrderedListSummary struct {
 
 func getRecipient(raw any) ([]string, error) {
 	var res []string
+	if raw == nil {
+		return res, nil
+	}
 	if slice, ok := raw.([]interface{}); ok {
 		for _, s := range slice {
 			if str, ok := s.(string); ok {
