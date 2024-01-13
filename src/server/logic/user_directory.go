@@ -179,17 +179,18 @@ func (udir *userDirectory) GetUserInfo(user string) *dto.UserInfo {
 	return &resp
 }
 
-func (udir *userDirectory) GetUserStatus(user, statusId string) (*dto.Note, error) {
+func (udir *userDirectory) GetUserStatus(user, id string) (*dto.Note, error) {
 
 	var err error
-	var statusIdVal int64
+	var idVal int64
 	var toot *dal.Toot
 
-	if statusIdVal, err = strconv.ParseInt(statusId, 10, 64); err != nil {
+	if idVal, err = strconv.ParseInt(id, 10, 64); err != nil {
 		return nil, nil
 	}
+	statusIdUrl := udir.idb.UserStatus(user, uint64(idVal))
 
-	if toot, err = udir.repo.GetToot(user, statusId); err != nil {
+	if toot, err = udir.repo.GetToot(statusIdUrl); err != nil {
 		return nil, err
 	}
 	if toot == nil {
@@ -203,7 +204,7 @@ func (udir *userDirectory) GetUserStatus(user, statusId string) (*dto.Note, erro
 	// For now, good enough.
 
 	note := &dto.Note{
-		Id:           udir.idb.UserStatus(user, uint64(statusIdVal)),
+		Id:           statusIdUrl,
 		Type:         "Note",
 		Published:    toot.TootedAt.Format(time.RFC3339), // Check: UTC?
 		Summary:      nil,

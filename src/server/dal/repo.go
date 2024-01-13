@@ -26,7 +26,7 @@ type IRepo interface {
 	BruteDeleteAccount(accountId int) error
 	GetAccountsPage(offset, limit int) ([]*Account, int, error)
 	AddToot(accountId int, toot *Toot) error
-	GetToot(user string, statusId string) (*Toot, error)
+	GetToot(statusId string) (*Toot, error)
 	GetPostCount(user string) (uint, error)
 	GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, error)
 	GetFeedLastUpdated(accountId int) (time.Time, error)
@@ -347,14 +347,13 @@ func (repo *Repo) AddToot(accountId int, toot *Toot) error {
 	return nil
 }
 
-func (repo *Repo) GetToot(user string, statusId string) (*Toot, error) {
+func (repo *Repo) GetToot(statusId string) (*Toot, error) {
 
 	repo.muDb.RLock()
 	defer repo.muDb.RUnlock()
 
-	query := `SELECT post_guid_hash, tooted_at, status_id, content
-		FROM toots JOIN accounts ON toots.account_id=accounts.id AND accounts.handle=?`
-	rows, err := repo.db.Query(query, user)
+	query := `SELECT post_guid_hash, tooted_at, status_id, content FROM toots WHERE status_id=?`
+	rows, err := repo.db.Query(query, statusId)
 	if err != nil {
 		return nil, err
 	}
