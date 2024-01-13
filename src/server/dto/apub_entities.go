@@ -1,5 +1,10 @@
 package dto
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 type UserInfo struct {
 	Context           any           `json:"@context"`
 	Id                string        `json:"id"`
@@ -50,22 +55,76 @@ type OrderedListSummary struct {
 	Last       *string `json:"last,omitempty"`
 }
 
+func getRecipient(raw any) ([]string, error) {
+	var res []string
+	if slice, ok := raw.([]interface{}); ok {
+		for _, s := range slice {
+			if str, ok := s.(string); ok {
+				res = append(res, str)
+			} else {
+				return res, fmt.Errorf("list of recipients must only contain strings")
+			}
+		}
+	} else if str, ok := raw.(string); ok {
+		res = []string{str}
+	} else {
+		return res, fmt.Errorf("to and cc must be single string or array of strings")
+	}
+	return res, nil
+}
+
 type ActivityInBase struct {
-	Id     string   `json:"id"`
-	Type   string   `json:"type"`
-	Actor  string   `json:"actor"`
-	To     []string `json:"to"`
-	Cc     []string `json:"cc"`
-	Object any      `json:"object"`
+	Id     string `json:"id"`
+	Type   string `json:"type"`
+	Actor  string `json:"actor"`
+	RawTo  any    `json:"to"`
+	RawCc  any    `json:"cc"`
+	Object any    `json:"object"`
+	To     []string
+	Cc     []string
+}
+
+func (x *ActivityInBase) UnmarshalJSON(data []byte) error {
+	var err error
+	type Y ActivityInBase
+	var y = (*Y)(x)
+	if err = json.Unmarshal(data, y); err != nil {
+		return err
+	}
+	if y.To, err = getRecipient(y.RawTo); err != nil {
+		return err
+	}
+	if y.Cc, err = getRecipient(y.RawCc); err != nil {
+		return err
+	}
+	return nil
 }
 
 type ActivityIn[T any] struct {
-	Id     string   `json:"id"`
-	Type   string   `json:"type"`
-	Actor  string   `json:"actor"`
-	To     []string `json:"to"`
-	Cc     []string `json:"cc"`
-	Object T        `json:"object"`
+	Id     string `json:"id"`
+	Type   string `json:"type"`
+	Actor  string `json:"actor"`
+	RawTo  any    `json:"to"`
+	RawCc  any    `json:"cc"`
+	Object T      `json:"object"`
+	To     []string
+	Cc     []string
+}
+
+func (x *ActivityIn[T]) UnmarshalJSON(data []byte) error {
+	var err error
+	type Y ActivityIn[T]
+	var y = (*Y)(x)
+	if err = json.Unmarshal(data, y); err != nil {
+		return err
+	}
+	if y.To, err = getRecipient(y.RawTo); err != nil {
+		return err
+	}
+	if y.Cc, err = getRecipient(y.RawCc); err != nil {
+		return err
+	}
+	return nil
 }
 
 type ActivityOut struct {
@@ -79,16 +138,42 @@ type ActivityOut struct {
 }
 
 type Note struct {
-	Id           string   `json:"id"`
-	Type         string   `json:"type"`
-	Published    string   `json:"published"`
-	Summary      *string  `json:"summary"`
-	AttributedTo string   `json:"attributedTo"`
-	InReplyTo    *string  `json:"inReplyTo"`
-	Content      string   `json:"content"`
-	To           []string `json:"to"`
-	Cc           []string `json:"cc"`
-	Tag          *[]Tag   `json:"tag,omitempty"`
+	Id           string  `json:"id"`
+	Type         string  `json:"type"`
+	Published    string  `json:"published"`
+	Summary      *string `json:"summary"`
+	AttributedTo string  `json:"attributedTo"`
+	InReplyTo    *string `json:"inReplyTo"`
+	Content      string  `json:"content"`
+	RawTo        any     `json:"to"`
+	RawCc        any     `json:"cc"`
+	Tag          *[]Tag  `json:"tag,omitempty"`
+	To           []string
+	Cc           []string
+}
+
+func (x *Note) UnmarshalJSON(data []byte) error {
+	var err error
+	type Y Note
+	var y = (*Y)(x)
+	if err = json.Unmarshal(data, y); err != nil {
+		return err
+	}
+	if y.To, err = getRecipient(y.RawTo); err != nil {
+		return err
+	}
+	if y.Cc, err = getRecipient(y.RawCc); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (x *Note) MarshalJSON() ([]byte, error) {
+	type Y Note
+	var y = (*Y)(x)
+	y.RawTo = y.To
+	y.RawCc = y.Cc
+	return json.Marshal(y)
 }
 
 type Tag struct {
