@@ -181,6 +181,8 @@ func (m *messenger) sendQueuedToot(item *dal.TootQueueItem, tootSent chan int) {
 		m.logger.Errorf("Failed to send queued toot: %v", err)
 	}
 
+	m.metrics.FeedTootSent()
+
 	tootSent <- item.Id
 }
 

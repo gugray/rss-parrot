@@ -13,6 +13,7 @@ type IMetrics interface {
 	FeedRequested(label string)
 	FeedUpdated()
 	NewPostSaved()
+	FeedTootSent()
 	ServiceStarted()
 	TotalFollowers(count int)
 	TootQueueLength(length int)
@@ -31,6 +32,7 @@ type metrics struct {
 	feedsRequested     *prometheus.CounterVec
 	feedsUpdated       prometheus.Counter
 	newPostsSaved      prometheus.Counter
+	feedTootsSent      prometheus.Counter
 	serviceStarted     prometheus.Counter
 	totalFollowers     prometheus.Gauge
 	tootQueueLength    prometheus.Gauge
@@ -77,6 +79,12 @@ func NewMetrics(cfg *shared.Config) IMetrics {
 		Help: "Number of new posts saved",
 	})
 	prometheus.Register(res.newPostsSaved)
+
+	res.feedTootsSent = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "feed_toots_sent",
+		Help: "Number of toots sent about new feed posts",
+	})
+	prometheus.Register(res.feedTootsSent)
 
 	res.serviceStarted = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "service_started",
@@ -139,6 +147,10 @@ func (m *metrics) TootQueueLength(length int) {
 
 func (m *metrics) FeedUpdated() {
 	m.feedsUpdated.Add(1)
+}
+
+func (m *metrics) FeedTootSent() {
+	m.feedTootsSent.Add(1)
 }
 
 func (m *metrics) NewPostSaved() {
