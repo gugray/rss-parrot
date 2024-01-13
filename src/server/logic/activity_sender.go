@@ -49,6 +49,9 @@ func (sender *activitySender) Send(
 
 	host := strings.Replace(inboxUrl, "https://", "", -1)
 	slashIx := strings.IndexByte(host, '/')
+	if slashIx == -1 {
+		return fmt.Errorf("invalid inbox url: %v", inboxUrl)
+	}
 	host = host[:slashIx]
 
 	bodyJson, _ := json.Marshal(activity)
