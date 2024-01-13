@@ -105,6 +105,7 @@ func (hg *apubHandlerGroup) getUser(w http.ResponseWriter, r *http.Request) {
 		profileUrl := idb.UserProfile(userName)
 		hg.logger.Infof("No application/json in accept header; redirecting to: '%s'", profileUrl)
 		http.Redirect(w, r, profileUrl, http.StatusSeeOther)
+		return
 	}
 
 	userInfo := hg.udir.GetUserInfo(userName)
@@ -127,6 +128,14 @@ func (hg *apubHandlerGroup) getUserStatus(w http.ResponseWriter, r *http.Request
 	userName := mux.Vars(r)["user"]
 	statusId := mux.Vars(r)["id"]
 
+	if !acceptsJson(r) {
+		idb := shared.IdBuilder{hg.cfg.Host}
+		profileUrl := idb.UserProfile(userName)
+		hg.logger.Infof("No application/json in accept header; redirecting to: '%s'", profileUrl)
+		http.Redirect(w, r, profileUrl, http.StatusSeeOther)
+		return
+	}
+	
 	var err error
 	var note *dto.Note
 	if note, err = hg.udir.GetUserStatus(userName, statusId); err != nil {
