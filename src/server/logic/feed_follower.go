@@ -83,6 +83,7 @@ func NewFeedFollower(
 }
 
 func (ff *feedFollower) getFeedUrl(siteUrl *url.URL, doc *goquery.Document) string {
+
 	var feedUrlStr string
 	isFeedRss := false
 	doc.Find("link[rel='alternate']").Each(func(_ int, s *goquery.Selection) {
@@ -102,6 +103,7 @@ func (ff *feedFollower) getFeedUrl(siteUrl *url.URL, doc *goquery.Document) stri
 			isFeedRss = true
 		}
 	})
+
 	// Make it absolute
 	feedUrl, err := url.Parse(feedUrlStr)
 	if err != nil {
@@ -110,6 +112,10 @@ func (ff *feedFollower) getFeedUrl(siteUrl *url.URL, doc *goquery.Document) stri
 	if !feedUrl.IsAbs() {
 		feedUrl = siteUrl.ResolveReference(feedUrl)
 	}
+
+	// Remove query parameters
+	feedUrl.RawQuery = ""
+
 	// It's a keeper
 	res := feedUrl.String()
 	res = strings.TrimRight(res, "/")
@@ -156,6 +162,16 @@ func (ff *feedFollower) validateSiteInfo(si *SiteInfo) error {
 	return nil
 }
 
+func removeQueryParams(urlStr string) (string, error) {
+	if parsedUrl, err := url.Parse(urlStr); err != nil {
+		return "", err
+	} else {
+		parsedUrl.RawQuery = ""
+		return parsedUrl.String(), nil
+	}
+
+}
+
 func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, error) {
 
 	urlStr = strings.TrimRight(urlStr, "/")
@@ -164,9 +180,13 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, err
 
 	// First, let's see if this is the feed itself
 	var feed *gofeed.Feed
-	feed, err = ff.fetchParseFeed(urlStr)
+	var noQueryUrlStr string
+	if noQueryUrlStr, err = removeQueryParams(urlStr); err != nil {
+		return nil, nil, err
+	}
+	feed, err = ff.fetchParseFeed(noQueryUrlStr)
 	if err == nil {
-		res.FeedUrl = urlStr
+		res.FeedUrl = noQueryUrlStr
 		res.LastUpdated = getLastUpdated(feed)
 		res.Title = feed.Title
 		res.Description = feed.Description
