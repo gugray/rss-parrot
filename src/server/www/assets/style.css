@@ -120,6 +120,8 @@ article.post .title { font-weight: 600; }
 article.post .description { margin-top: 6px; font-style: italic; font-size: 94%; }
 p.omitted-posts { margin: 36px 0; border-top: 1px dotted var(--clrTextFainter); padding-top: 36px; }
 
+main img { max-width: 100%; }
+
 
 footer { display: flex; justify-content: flex-end; font-size: 15px; }
 footer p { margin-left: 6px; }

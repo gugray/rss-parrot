@@ -1,6 +1,30 @@
 {{define "main"}}
   <h2>Changes and announcements</h2>
 
+  <a id="2024-01-13" class="jump"><h3>2024-01-13 ~ tweaks and bugfixes ~</h3></a>
+  <p>
+    Although these changes are typically not visible in the form of pixels on anyone's screen, I've been making a series of
+    not-so-spectacular improvements. Think of very technical things, like the birb setting the User-Agent header when
+    retrieving websites and feeds. Think also of the ActivityPub protocol's arcane details that I cannot even begin
+    to describe, lest a lower daemon springeth forth from the Underspecified Domain and eat my soul.
+  </p>
+  <p>
+    The goal of this kind of work is to make the birb fail in fewer situations. Success is when you don't notice it
+    happening. Unfortunately, I did bork things a couple of times, so there were periods when the birb would not reply
+    to mentions, or toot out new posts later than it should have. Luckily, you didn't notice.
+  </p>
+  <p>
+    If you do want to know more, or if you want to give me more such work, check out the
+    <a href="https://github.com/gugray/rss-parrot/issues">issue tracker</a> on Github.
+  </p>
+  <p>
+    The good news is, I also have an entire screen full of little appealing graphs like the one below. This means that when I
+    get bored of doing real work, I can just stare at these and relax.
+  </p>
+  <p>
+    <img src="/assets/feeds-updated.png" alt=".">
+  </p>
+
   <a id="2024-01-08" class="jump"><h3>2024-01-08 ~ improvements ~</h3></a>
   <p>
     I have released changes last night and just now that address several issues you have reported on Mastodon,

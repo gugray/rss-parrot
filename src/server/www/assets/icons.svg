@@ -21,4 +21,10 @@
     <path d="M104,232V192a32,32,0,0,1,32-32h0a32,32,0,0,1,32,32v40" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
     <path d="M104,208H72a32,32,0,0,1-32-32A32,32,0,0,0,8,144" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
   </symbol>
+  <symbol viewBox="0 0 256 256" id="icon-podcast">
+    <circle cx="128" cy="120" r="24" fill="none" stroke="#8553a9" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+	<path d="M131.56,224h-7.12a16.2,16.2,0,0,1-15.76-12.12l-12.19-48A16.06,16.06,0,0,1,112.25,144h31.5a16.06,16.06,0,0,1,15.76,19.88l-12.19,48A16.2,16.2,0,0,1,131.56,224Z" fill="none" stroke="#8553a9" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+	<path d="M66,144a64,64,0,1,1,124,0" fill="none" stroke="#8553a9" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+	<path d="M74.92,208a96,96,0,1,1,106.16,0" fill="none" stroke="#8553a9" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
+  </symbol>
 </svg>
