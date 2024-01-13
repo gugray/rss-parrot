@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"rss_parrot/dal"
 	"rss_parrot/shared"
 	"rss_parrot/texts"
@@ -68,6 +69,7 @@ func NewFeedFollower(
 	keyStore IKeyStore,
 	metrics IMetrics,
 ) IFeedFollower {
+
 	ff := feedFollower{
 		cfg:       cfg,
 		logger:    logger,
@@ -78,7 +80,10 @@ func NewFeedFollower(
 		keyStore:  keyStore,
 		metrics:   metrics,
 	}
+
+	ff.updateDBSizeMetric()
 	go ff.feedCheckLoop()
+
 	return &ff
 }
 
@@ -567,9 +572,33 @@ func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 	return nil
 }
 
+func (ff *feedFollower) updateDBSizeMetric() {
+
+	// In case feed follower is running on a mock config in a unit test: don't bother
+	if ff.cfg.DbFile == "" {
+		return
+	}
+
+	var err error
+	var fi os.FileInfo
+	fi, err = os.Stat(ff.cfg.DbFile)
+	if err != nil {
+		ff.logger.Errorf("Error getting DB file size: %v", err)
+		return
+	}
+	ff.metrics.DbFileSize(fi.Size())
+}
+
 func (ff *feedFollower) feedCheckLoop() {
 	for {
+		// This is why we're here
 		ff.feedCheckLoopInner()
+
+		// This is real doggone ugly here, but -
+		// Other option is to create a logic class just for this
+		// Rather a little ugliness here, then all that boilerplate
+		// And we're already also setting the "feed-followers" metrics in this module
+		ff.updateDBSizeMetric()
 	}
 }
 

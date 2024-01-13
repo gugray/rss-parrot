@@ -18,6 +18,7 @@ type IMetrics interface {
 	TotalFollowers(count int)
 	TootQueueLength(length int)
 	CheckableFeedCount(count int)
+	DbFileSize(size int64)
 }
 
 type IRequestObserver interface {
@@ -37,6 +38,7 @@ type metrics struct {
 	totalFollowers     prometheus.Gauge
 	tootQueueLength    prometheus.Gauge
 	checkableFeedCount prometheus.Gauge
+	dbFileSize         prometheus.Gauge
 }
 
 func NewMetrics(cfg *shared.Config) IMetrics {
@@ -110,6 +112,12 @@ func NewMetrics(cfg *shared.Config) IMetrics {
 	})
 	prometheus.Register(res.checkableFeedCount)
 
+	res.dbFileSize = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "db_file_size",
+		Help: "SQLite database file size",
+	})
+	prometheus.Register(res.dbFileSize)
+
 	return &res
 }
 
@@ -167,4 +175,8 @@ func (m *metrics) TotalFollowers(count int) {
 
 func (m *metrics) CheckableFeedCount(count int) {
 	m.checkableFeedCount.Set(float64(count))
+}
+
+func (m *metrics) DbFileSize(size int64) {
+	m.dbFileSize.Set(float64(size))
 }
