@@ -22,6 +22,7 @@ type Config struct {
 	ServicePort        uint           `json:"service_port"`
 	Host               string         `json:"host"`
 	DbFile             string         `json:"db_file"`
+	BlockedFeedsFile   string         `json:"blocked_feeds_file"`
 	CachePageTemplates bool           `json:"cache_page_templates"`
 	UpdateSchedule     UpdateSchedule `json:"update_schedule"`
 	FallbackProfilePic string         `json:"fallback_profile_pic"`

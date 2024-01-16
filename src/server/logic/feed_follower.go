@@ -29,6 +29,7 @@ const (
 	FsError           = -1
 	FsMastodon        = -2
 	FsBanned          = -3
+	FsOptOut          = -4
 )
 
 const (
@@ -49,14 +50,15 @@ type SiteInfo struct {
 }
 
 type feedFollower struct {
-	cfg       *shared.Config
-	logger    shared.ILogger
-	userAgent shared.IUserAgent
-	repo      dal.IRepo
-	messenger IMessenger
-	txt       texts.ITexts
-	keyStore  IKeyStore
-	metrics   IMetrics
+	cfg          *shared.Config
+	logger       shared.ILogger
+	userAgent    shared.IUserAgent
+	repo         dal.IRepo
+	blockedFeeds IBlockedFeeds
+	messenger    IMessenger
+	txt          texts.ITexts
+	keyStore     IKeyStore
+	metrics      IMetrics
 }
 
 func NewFeedFollower(
@@ -64,6 +66,7 @@ func NewFeedFollower(
 	logger shared.ILogger,
 	userAgent shared.IUserAgent,
 	repo dal.IRepo,
+	blockedFeeds IBlockedFeeds,
 	messenger IMessenger,
 	txt texts.ITexts,
 	keyStore IKeyStore,
@@ -71,14 +74,15 @@ func NewFeedFollower(
 ) IFeedFollower {
 
 	ff := feedFollower{
-		cfg:       cfg,
-		logger:    logger,
-		userAgent: userAgent,
-		repo:      repo,
-		messenger: messenger,
-		txt:       txt,
-		keyStore:  keyStore,
-		metrics:   metrics,
+		cfg:          cfg,
+		logger:       logger,
+		userAgent:    userAgent,
+		repo:         repo,
+		blockedFeeds: blockedFeeds,
+		messenger:    messenger,
+		txt:          txt,
+		keyStore:     keyStore,
+		metrics:      metrics,
 	}
 
 	ff.updateDBSizeMetric()
@@ -441,14 +445,27 @@ func (ff *feedFollower) createToot(accountId int, accountHandle string, itm *gof
 	return nil
 }
 
-func (ff *feedFollower) filterFeed(feed *gofeed.Feed) FeedStatus {
+func (ff *feedFollower) filterFeed(feedUrl string, feed *gofeed.Feed) (FeedStatus, error) {
 
+	// We don't parrot Mastond RSS feeds
 	generator := strings.ToLower(feed.Generator)
 	if strings.Contains(generator, "mastodon") {
-		return FsMastodon
+		return FsMastodon, nil
 	}
+
+	// We don't parrot blocked feeds
+	var err error
+	var blocked bool
+	blocked, err = ff.blockedFeeds.IsBlocked(feedUrl)
+	if err != nil {
+		return FsError, err
+	}
+	if blocked {
+		return FsOptOut, nil
+	}
+
 	// FsError is the OK response
-	return FsError
+	return FsError, nil
 }
 
 func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, status FeedStatus, err error) {
@@ -473,7 +490,11 @@ func (ff *feedFollower) GetAccountForFeed(urlStr string) (acct *dal.Account, sta
 		return
 	}
 
-	status = ff.filterFeed(feed)
+	status, err = ff.filterFeed(si.FeedUrl, feed)
+	if err != nil {
+		status = FsError
+		return
+	}
 	if status != FsError {
 		return
 	}

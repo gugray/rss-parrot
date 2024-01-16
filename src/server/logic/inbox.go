@@ -369,6 +369,8 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 			template = "reply_feed_mastodon.html"
 		} else if status == FsBanned {
 			template = "reply_feed_banned.html"
+		} else if status == FsOptOut {
+			template = "reply_feed_optout.html"
 		}
 		msg := ib.txt.WithVals(template, map[string]string{
 			"moniker": moniker,

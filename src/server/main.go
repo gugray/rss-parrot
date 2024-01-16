@@ -45,6 +45,7 @@ func main() {
 			server.NewHTTPServer,
 			fx.Annotate(server.NewMux, fx.ParamTags(`group:"handler_group"`)),
 			logic.NewKeyStore,
+			logic.NewBlockedFeeds,
 			logic.NewMetrics,
 			logic.NewFeedFollower,
 			logic.NewUserDirectory,
