@@ -109,6 +109,7 @@ article.feed p.info { font-size: 80%; }
 h2.feed-name { margin-bottom: 0; }
 p.feed-handle { margin: 0 0 22px 0; }
 section.feed-bio { border-bottom: 1px dotted var(--clrTextFainter); }
+section.feed-remove { border-bottom: 1px dotted var(--clrTextFainter); font-style: italic; padding: 4px 0; }
 section.feed-stats { border-bottom: 1px dotted var(--clrTextFainter); padding: 6px 0; }
 section.feed-stats p { margin: 0; }
 section.feed-stats span { display: inline-block; }

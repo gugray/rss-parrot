@@ -2,6 +2,10 @@
   <h2 class="feed-name">{{ .Data.Name }}</h2>
   <p class="feed-handle">{{ .Data.Handle }}</p>
   <section class="feed-bio">{{ .Data.Bio }}</section>
+  <section class="feed-remove">
+    Your feed and you don't want it here? Just
+    <a href="mailto:rss.parrot@gmail.com">e-mail</a> the birb.
+  </section>
   <section class="feed-stats">
     <p><span class="label">Site URL: </span><a href="{{ .Data.SiteUrl }}">{{.Data.SiteUrlNoSchema}}</a></p>
     <p><span class="label">Feed URL: </span><a href="{{ .Data.FeedUrl }}">{{.Data.FeedUrlNoSchema}}</a></p>
