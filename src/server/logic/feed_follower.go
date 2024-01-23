@@ -122,13 +122,22 @@ func (ff *feedFollower) getFeedUrl(siteUrl *url.URL, doc *goquery.Document) stri
 		feedUrl = siteUrl.ResolveReference(feedUrl)
 	}
 
-	// Remove query parameters
-	feedUrl.RawQuery = ""
+	// Remove (most) query parameters
+	ff.trimQueryParams(feedUrl)
 
 	// It's a keeper
 	res := feedUrl.String()
 	res = strings.TrimRight(res, "/")
 	return res
+}
+
+func (ff *feedFollower) trimQueryParams(feedUrl *url.URL) {
+	// The few exceptions where we keep the query param
+	// #33: Youtube feeds look like this: https://www.youtube.com/feeds/videos.xml?channel_id=UCfZz8F37oSJ2rtcEJHM2kCg
+	if strings.Contains(feedUrl.Host, "youtube.com") && strings.Contains(feedUrl.RawQuery, "channel_id") {
+		return
+	}
+	feedUrl.RawQuery = ""
 }
 
 func (ff *feedFollower) getMetas(doc *goquery.Document, si *SiteInfo) {
