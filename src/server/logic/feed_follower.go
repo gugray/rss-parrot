@@ -137,6 +137,11 @@ func (ff *feedFollower) trimQueryParams(feedUrl *url.URL) {
 	if strings.Contains(feedUrl.Host, "youtube.com") && strings.Contains(feedUrl.RawQuery, "channel_id") {
 		return
 	}
+	// #37: Archive.org: https://archive.org/services/collection-rss.php?collection=misczinespunk
+	if strings.Contains(feedUrl.Host, "archive.org") {
+		return
+	}
+	// All otheres: remove query
 	feedUrl.RawQuery = ""
 }
 
