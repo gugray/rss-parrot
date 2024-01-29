@@ -145,6 +145,16 @@ func (ff *feedFollower) trimQueryParams(feedUrl *url.URL) {
 	feedUrl.RawQuery = ""
 }
 
+func (ff *feedFollower) trimQueryParamsStr(urlStr string) (string, error) {
+	if parsedUrl, err := url.Parse(urlStr); err != nil {
+		return "", err
+	} else {
+		ff.trimQueryParams(parsedUrl)
+		return parsedUrl.String(), nil
+	}
+
+}
+
 func (ff *feedFollower) getMetas(doc *goquery.Document, si *SiteInfo) {
 	s := doc.Find("title").First()
 	if s.Length() != 0 {
@@ -185,16 +195,6 @@ func (ff *feedFollower) validateSiteInfo(si *SiteInfo) error {
 	return nil
 }
 
-func removeQueryParams(urlStr string) (string, error) {
-	if parsedUrl, err := url.Parse(urlStr); err != nil {
-		return "", err
-	} else {
-		parsedUrl.RawQuery = ""
-		return parsedUrl.String(), nil
-	}
-
-}
-
 func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, error) {
 
 	urlStr = strings.TrimRight(urlStr, "/")
@@ -204,7 +204,7 @@ func (ff *feedFollower) getSiteInfo(urlStr string) (*SiteInfo, *gofeed.Feed, err
 	// First, let's see if this is the feed itself
 	var feed *gofeed.Feed
 	var noQueryUrlStr string
-	if noQueryUrlStr, err = removeQueryParams(urlStr); err != nil {
+	if noQueryUrlStr, err = ff.trimQueryParamsStr(urlStr); err != nil {
 		return nil, nil, err
 	}
 	feed, err = ff.fetchParseFeed(noQueryUrlStr)
