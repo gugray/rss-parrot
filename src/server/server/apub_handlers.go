@@ -90,7 +90,7 @@ func (hg *apubHandlerGroup) getWebfinger(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	writeJsonResponse(hg.logger, w, resp)
+	writeJsonResponse(hg.logger, w, true, resp)
 }
 
 func (hg *apubHandlerGroup) getUser(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +116,7 @@ func (hg *apubHandlerGroup) getUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJsonResponse(hg.logger, w, userInfo)
+	writeJsonResponse(hg.logger, w, true, userInfo)
 }
 
 func (hg *apubHandlerGroup) getUserStatus(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +135,7 @@ func (hg *apubHandlerGroup) getUserStatus(w http.ResponseWriter, r *http.Request
 		http.Redirect(w, r, profileUrl, http.StatusSeeOther)
 		return
 	}
-	
+
 	var err error
 	var note *dto.Note
 	if note, err = hg.udir.GetUserStatus(userName, statusId); err != nil {
@@ -150,7 +150,7 @@ func (hg *apubHandlerGroup) getUserStatus(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	writeJsonResponse(hg.logger, w, note)
+	writeJsonResponse(hg.logger, w, true, note)
 }
 
 func (hg *apubHandlerGroup) getUserOutbox(w http.ResponseWriter, r *http.Request) {
@@ -166,7 +166,7 @@ func (hg *apubHandlerGroup) getUserOutbox(w http.ResponseWriter, r *http.Request
 		writeErrorResponse(w, "No such user", http.StatusNotFound)
 		return
 	}
-	writeJsonResponse(hg.logger, w, summary)
+	writeJsonResponse(hg.logger, w, true, summary)
 }
 
 func (hg *apubHandlerGroup) getUserFollowers(w http.ResponseWriter, r *http.Request) {
@@ -182,7 +182,7 @@ func (hg *apubHandlerGroup) getUserFollowers(w http.ResponseWriter, r *http.Requ
 		writeErrorResponse(w, "No such user", http.StatusNotFound)
 		return
 	}
-	writeJsonResponse(hg.logger, w, summary)
+	writeJsonResponse(hg.logger, w, true, summary)
 }
 
 func (hg *apubHandlerGroup) getUserFollowing(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +198,7 @@ func (hg *apubHandlerGroup) getUserFollowing(w http.ResponseWriter, r *http.Requ
 		writeErrorResponse(w, "No such user", http.StatusNotFound)
 		return
 	}
-	writeJsonResponse(hg.logger, w, summary)
+	writeJsonResponse(hg.logger, w, true, summary)
 }
 
 func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
@@ -247,7 +247,7 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 	if sigProblem != "" {
 		if act.Type == "Delete" {
 			hg.logger.Infof("Ignoring Delete request with unverified actor signature")
-			writeJsonResponse(hg.logger, w, "OK")
+			writeJsonResponse(hg.logger, w, true, "OK")
 		} else {
 			hg.logger.Warnf("Incorrectly signed inbox POST request: %s", sigProblem)
 			msg := fmt.Sprintf("Invalid HTTP signature: %s", sigProblem)
@@ -309,5 +309,5 @@ func (hg *apubHandlerGroup) processActivity(
 		return
 	}
 
-	writeJsonResponse(hg.logger, w, "OK")
+	writeJsonResponse(hg.logger, w, true, "OK")
 }

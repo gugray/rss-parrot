@@ -113,7 +113,7 @@ func (hg *apiHandlerGroup) deleteAccount(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	writeJsonResponse(hg.logger, w, "OK")
+	writeJsonResponse(hg.logger, w, false, "OK")
 }
 
 func (hg *apiHandlerGroup) postFeeds(w http.ResponseWriter, r *http.Request) {
@@ -164,5 +164,5 @@ func (hg *apiHandlerGroup) postFeeds(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
-	writeJsonResponse(hg.logger, w, res)
+	writeJsonResponse(hg.logger, w, false, res)
 }

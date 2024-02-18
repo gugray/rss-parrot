@@ -51,8 +51,12 @@ func acceptsJson(r *http.Request) bool {
 }
 
 // Returns the JSON serialized object as the response body; handles errors.
-func writeJsonResponse(logger shared.ILogger, w http.ResponseWriter, resp interface{}) {
-	w.Header().Set("Content-Type", "application/json")
+func writeJsonResponse(logger shared.ILogger, w http.ResponseWriter, isApub bool, resp interface{}) {
+	if isApub {
+		w.Header().Set("Content-Type", "application/activity+json; charset=utf-8")
+	} else {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	}
 	var err error
 	var respJson []byte
 	if respJson, err = json.Marshal(resp); err != nil {
