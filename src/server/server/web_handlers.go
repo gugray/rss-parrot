@@ -19,7 +19,6 @@ import (
 const versionFileName = "version.txt"
 const feedsPerPage = 200
 const postsPerPage = 100
-const maxDescriptionLen = 256
 
 var months = []string{
 	"January", "February", "March", "April", "May", "June",
@@ -363,10 +362,7 @@ func (hg *webHandlerGroup) loadFeedData(acct *dal.Account) *oneFeedModel {
 	}
 
 	for _, p := range data.Posts {
-		if len(p.Description) <= maxDescriptionLen {
-			continue
-		}
-		p.Description = shared.TruncateWithEllipsis(p.Description, maxDescriptionLen)
+		p.Description = shared.TruncateWithEllipsis(p.Description, shared.MaxDescriptionLen)
 	}
 
 	if data.PostCount > uint(len(data.Posts)) {

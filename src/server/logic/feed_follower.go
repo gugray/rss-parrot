@@ -432,6 +432,7 @@ func (ff *feedFollower) createToot(accountId int, accountHandle string, itm *gof
 	prettyUrl = strings.TrimRight(prettyUrl, "/")
 	plainTitle := stripHtml(itm.Title)
 	plainDescription := stripHtml(itm.Description)
+	plainDescription = shared.TruncateWithEllipsis(plainDescription, shared.MaxDescriptionLen)
 	content := ff.txt.WithVals("toot_new_post.html", map[string]string{
 		"title":       plainTitle,
 		"url":         itm.Link,
