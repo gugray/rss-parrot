@@ -251,7 +251,7 @@ func (udir *userDirectory) GetFollowersSummary(user string) *dto.OrderedListSumm
 	}
 
 	var followerCount uint
-	followerCount, err = udir.repo.GetApprovedFollowerCount(user) // TODO errors
+	followerCount, err = udir.repo.GetFollowerCount(user, true) // TODO errors
 
 	resp := dto.OrderedListSummary{
 		Context:    "https://www.w3.org/ns/activitystreams",

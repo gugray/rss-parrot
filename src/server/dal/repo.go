@@ -33,7 +33,7 @@ type IRepo interface {
 	UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error
 	AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error)
 	GetAccountToCheck(checkDue time.Time) (*Account, int, error)
-	GetApprovedFollowerCount(user string) (uint, error)
+	GetFollowerCount(user string, onlyApproved bool) (uint, error)
 
 	// Returns number of all followers of feeds. Includes unapproved and banned ones, but excludes followers of birb.
 	GetFeedFollowerCount() (int, error)
@@ -412,14 +412,18 @@ func (repo *Repo) GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, e
 	return res, nil
 }
 
-func (repo *Repo) GetApprovedFollowerCount(user string) (uint, error) {
+func (repo *Repo) GetFollowerCount(user string, onlyApproved bool) (uint, error) {
 
 	repo.muDb.RLock()
 	defer repo.muDb.RUnlock()
 
-	row := repo.db.QueryRow(`SELECT COUNT(*) FROM followers JOIN accounts
-		ON followers.account_id=accounts.id AND accounts.handle=?
-		WHERE followers.approve_status=1`, user)
+	sql := `SELECT COUNT(*) FROM followers JOIN accounts
+		ON followers.account_id=accounts.id AND accounts.handle=?`
+	if onlyApproved {
+		sql += ` WHERE followers.approve_status=1`
+	}
+
+	row := repo.db.QueryRow(sql, user)
 	var err error
 	var count int
 	if err = row.Scan(&count); err != nil {

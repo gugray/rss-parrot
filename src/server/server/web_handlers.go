@@ -332,7 +332,7 @@ func (hg *webHandlerGroup) loadFeedData(acct *dal.Account) *oneFeedModel {
 		"description": acct.FeedSummary,
 	})
 	var followerCount, postCount uint
-	if followerCount, err = hg.repo.GetApprovedFollowerCount(acct.Handle); err != nil {
+	if followerCount, err = hg.repo.GetFollowerCount(acct.Handle, true); err != nil {
 		hg.logger.Errorf("Error retrieving follower count for %s: %v", acct.Handle, err)
 		return nil
 	}

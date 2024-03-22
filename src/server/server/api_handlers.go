@@ -94,7 +94,7 @@ func (hg *apiHandlerGroup) deleteAccount(w http.ResponseWriter, r *http.Request)
 	var acct *dal.Account
 	acct, err = hg.repo.GetAccount(accountName)
 	if err != nil {
-		msg := fmt.Sprintf("Failed to brute-delete account: %v", err)
+		msg := fmt.Sprintf("Failed to get account: %v", err)
 		hg.logger.Error(msg)
 		writeErrorResponse(w, msg, http.StatusInternalServerError)
 		return

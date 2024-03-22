@@ -608,6 +608,22 @@ func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 	return nil
 }
 
+func (ff *feedFollower) loseWeight(acct *dal.Account) {
+
+	followerCount, err := ff.repo.GetFollowerCount(acct.Handle, false)
+	if err != nil {
+		ff.logger.Errorf("Error getting follower count of feed: %s: %v", acct.Handle, err)
+		return
+	}
+	if followerCount == 0 {
+		ff.logger.Infof("Deleting account with 0 followers: %s", acct.Handle)
+		if err = ff.repo.BruteDeleteAccount(acct.Id); err != nil {
+			ff.logger.Errorf("Failed to brute-delete account: %s: %v", acct.Handle, err)
+		}
+		return
+	}
+}
+
 func (ff *feedFollower) updateDBSizeMetric() {
 
 	// In case feed follower is running on a mock config in a unit test: don't bother
@@ -674,4 +690,6 @@ func (ff *feedFollower) feedCheckLoopInner() {
 		}
 	}
 	// If no error, updateFeed has set next due date for checking
+	// Delete account if no followers; purge old posts
+	ff.loseWeight(acct)
 }
