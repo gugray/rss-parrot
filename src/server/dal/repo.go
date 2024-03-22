@@ -244,23 +244,59 @@ func (repo *Repo) getAccount(user string) (*Account, error) {
 
 func (repo *Repo) BruteDeleteAccount(accountId int) error {
 
-	repo.muDb.Lock()
-	defer repo.muDb.Unlock()
+	step1 := func() error {
+		repo.muDb.Lock()
+		defer repo.muDb.Unlock()
+		_, err := repo.db.Exec(`DELETE FROM toots WHERE account_id=?`, accountId)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 
-	_, err := repo.db.Exec(`DELETE FROM toots WHERE account_id=?`, accountId)
-	if err != nil {
+	step2 := func() error {
+		repo.muDb.Lock()
+		defer repo.muDb.Unlock()
+		_, err := repo.db.Exec(`DELETE FROM feed_posts WHERE account_id=?`, accountId)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	step3 := func() error {
+		repo.muDb.Lock()
+		defer repo.muDb.Unlock()
+		_, err := repo.db.Exec(`DELETE FROM followers WHERE account_id=?`, accountId)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	step4 := func() error {
+		repo.muDb.Lock()
+		defer repo.muDb.Unlock()
+		_, err := repo.db.Exec(`DELETE FROM accounts WHERE id=?`, accountId)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if err := step1(); err != nil {
 		return err
 	}
-	_, err = repo.db.Exec(`DELETE FROM feed_posts WHERE account_id=?`, accountId)
-	if err != nil {
+	time.Sleep(100 * time.Millisecond)
+	if err := step2(); err != nil {
 		return err
 	}
-	_, err = repo.db.Exec(`DELETE FROM followers WHERE account_id=?`, accountId)
-	if err != nil {
+	time.Sleep(100 * time.Millisecond)
+	if err := step3(); err != nil {
 		return err
 	}
-	_, err = repo.db.Exec(`DELETE FROM accounts WHERE id=?`, accountId)
-	if err != nil {
+	time.Sleep(100 * time.Millisecond)
+	if err := step4(); err != nil {
 		return err
 	}
 

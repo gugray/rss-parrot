@@ -16,6 +16,7 @@ import (
 	"rss_parrot/texts"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -59,6 +60,8 @@ type feedFollower struct {
 	txt          texts.ITexts
 	keyStore     IKeyStore
 	metrics      IMetrics
+	muDeleting   sync.Mutex
+	isDeleting   bool
 }
 
 func NewFeedFollower(
@@ -83,6 +86,7 @@ func NewFeedFollower(
 		txt:          txt,
 		keyStore:     keyStore,
 		metrics:      metrics,
+		isDeleting:   false,
 	}
 
 	ff.updateDBSizeMetric()
@@ -610,6 +614,25 @@ func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 
 func (ff *feedFollower) loseWeight(acct *dal.Account) {
 
+	// We're fired off as a goroutine each time there's a deletable account
+	// Only run one account deleting at a time
+	canProceed := false
+	ff.muDeleting.Lock()
+	if !ff.isDeleting {
+		canProceed = true
+		ff.isDeleting = true
+	}
+	ff.muDeleting.Unlock()
+	if !canProceed {
+		return
+	}
+	signalDone := func() {
+		ff.muDeleting.Lock()
+		ff.isDeleting = false
+		ff.muDeleting.Unlock()
+	}
+	defer signalDone()
+
 	followerCount, err := ff.repo.GetFollowerCount(acct.Handle, false)
 	if err != nil {
 		ff.logger.Errorf("Error getting follower count of feed: %s: %v", acct.Handle, err)
@@ -691,5 +714,5 @@ func (ff *feedFollower) feedCheckLoopInner() {
 	}
 	// If no error, updateFeed has set next due date for checking
 	// Delete account if no followers; purge old posts
-	ff.loseWeight(acct)
+	go ff.loseWeight(acct)
 }
