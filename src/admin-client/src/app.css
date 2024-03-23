@@ -52,6 +52,10 @@ section {
 .spacer { display: inline-block; width: 24px; }
 #pnlImportErrors { white-space: pre-wrap; color: var(--clrError); }
 
+#cnvIcon {
+  width: 256px; height: 256px; background-color: black;
+}
+
 @font-face {
   font-display: swap;
   font-family: 'Open Sans';

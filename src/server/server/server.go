@@ -14,6 +14,7 @@ import (
 )
 
 const assetsDir = "/assets"
+const faviconName = "/favicon.ico"
 const chunkSize = 65536
 const strCacheControlHdr = "Cache-Control"
 
@@ -105,12 +106,16 @@ func handleStatic(logger shared.ILogger,
 
 	w.Header().Set(strCacheControlHdr, "max-age=31536000, immutable")
 
-	if !strings.HasPrefix(r.URL.Path, assetsDir) {
+	// We serve everything from /assets folder, EXCEPT favicon.ico, which gets special treatment
+	if r.URL.Path != faviconName && !strings.HasPrefix(r.URL.Path, assetsDir) {
 		return404()
 		return
 	}
 
 	fn := filepath.Join(wwwPathPrefx, r.URL.Path)
+	if r.URL.Path == faviconName {
+		fn = filepath.Join(wwwPathPrefx, assetsDir, r.URL.Path)
+	}
 	file, err := os.Open(fn)
 	if err != nil {
 		return404()

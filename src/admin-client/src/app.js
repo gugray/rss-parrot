@@ -1,4 +1,5 @@
 import {feedUrls} from "./urls-debug.js";
+import {initGenIcon} from "./gen-icon.js";
 
 const elmTxtServerUrl = document.getElementById("txtServerUrl");
 const elmTxtApiKey = document.getElementById("txtApiKey");
@@ -31,6 +32,7 @@ const feedImportStats = {
 
 initParams();
 initFeedImport();
+initGenIcon();
 
 function initParams() {
   let stgs = null;
