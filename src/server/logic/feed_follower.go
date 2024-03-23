@@ -638,13 +638,15 @@ func (ff *feedFollower) loseWeight(acct *dal.Account) {
 		ff.logger.Errorf("Error getting follower count of feed: %s: %v", acct.Handle, err)
 		return
 	}
-	if followerCount == 0 {
-		ff.logger.Infof("Deleting account with 0 followers: %s", acct.Handle)
-		if err = ff.repo.BruteDeleteAccount(acct.Id); err != nil {
-			ff.logger.Errorf("Failed to brute-delete account: %s: %v", acct.Handle, err)
-		}
+	if followerCount != 0 {
 		return
 	}
+	ff.logger.Infof("Deleting account with 0 followers: %s", acct.Handle)
+	if err = ff.repo.BruteDeleteAccount(acct.Id); err != nil {
+		ff.logger.Errorf("Failed to brute-delete account: %s: %v", acct.Handle, err)
+		return
+	}
+	time.Sleep(30 * time.Second)
 }
 
 func (ff *feedFollower) updateDBSizeMetric() {
