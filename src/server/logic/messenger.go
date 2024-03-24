@@ -9,8 +9,10 @@ import (
 	"time"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_messenger.go -package mocks rss_parrot/logic IMessenger
+
 type IMessenger interface {
-	SendMessageSync(byUser string, toInbox, msg string, mentions []*MsgMention, to, cc []string, inReplyTo string)
+	SendMessageAsync(byUser string, toInbox, msg string, mentions []*MsgMention, to, cc []string, inReplyTo string)
 	EnqueueBroadcast(user string, statusId string, tootedAt time.Time, msg string) error
 }
 
@@ -63,7 +65,13 @@ func NewMessenger(
 	return &m
 }
 
-func (m *messenger) SendMessageSync(byUser string, toInbox, msg string,
+func (m *messenger) SendMessageAsync(byUser string, toInbox, msg string,
+	mentions []*MsgMention, to, cc []string, inReplyTo string,
+) {
+	go m.sendMessage(byUser, toInbox, msg, mentions, to, cc, inReplyTo)
+}
+
+func (m *messenger) sendMessage(byUser string, toInbox, msg string,
 	mentions []*MsgMention, to, cc []string, inReplyTo string,
 ) {
 	published := time.Now().UTC().Format(time.RFC3339)

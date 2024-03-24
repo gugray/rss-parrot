@@ -1,0 +1,22 @@
+{
+  "@context": ["https://www.w3.org/ns/activitystreams"],
+  "id": "{{activity-id}}",
+  "type": "Create",
+  "actor": "{{actor}}",
+  "published": "{{published}}",
+  "to": {{to}},
+  "cc": {{cc}},
+  "object": {
+    "id": "{{activity-id}}",
+    "type": "Note",
+    "summary": null,
+    "inReplyTo": null,
+    "published": "{{published}}",
+    "attributedTo": "{{actor}}",
+    "to": {{to}},
+    "cc": {{cc}},
+    "content": "{{content}}",
+    "tag": {{tags}}
+  }
+}
+

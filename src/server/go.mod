@@ -15,6 +15,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
 	go.uber.org/fx v1.20.1
+	go.uber.org/mock v0.4.0
 )
 
 require (

@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_texts.go -package mocks rss_parrot/texts ITexts
+
 //go:embed snippets
 var fs embed.FS
 

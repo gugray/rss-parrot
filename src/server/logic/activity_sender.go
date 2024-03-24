@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_activity_sender.go -package mocks rss_parrot/logic IActivitySender
+
 type IActivitySender interface {
 	Send(privKey *rsa.PrivateKey, sendingUser, inboxUrl string, activity *dto.ActivityOut) error
 }

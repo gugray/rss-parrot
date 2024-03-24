@@ -336,7 +336,7 @@ func (ib *inbox) HandleCreateNote(
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})
-		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+		ib.messenger.SendMessageAsync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
 			[]*MsgMention{{moniker, act.Actor}}, to, cc, act.Object.Id)
 		return
 	}
@@ -376,7 +376,7 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 			"moniker": moniker,
 			"userUrl": senderInfo.Id,
 		})
-		go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+		ib.messenger.SendMessageAsync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
 			[]*MsgMention{{moniker, act.Actor}}, to, cc, act.Object.Id)
 		return
 	}
@@ -392,7 +392,7 @@ func (ib *inbox) handleSiteRequest(senderInfo *dto.UserInfo, act dto.ActivityIn[
 		"host":           ib.cfg.Host,
 		"accountUrl":     accountUrl,
 	})
-	go ib.messenger.SendMessageSync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
+	ib.messenger.SendMessageAsync(ib.cfg.Birb.User, senderInfo.Inbox, msg,
 		[]*MsgMention{{moniker, act.Actor}, {accountMoniker, accountUrl}},
 		to, cc, act.Object.Id)
 }

@@ -9,6 +9,8 @@ import (
 	"rss_parrot/shared"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_key_store.go -package mocks rss_parrot/logic IKeyStore
+
 type IKeyStore interface {
 	GetPrivKey(user string) (*rsa.PrivateKey, error)
 	MakeKeyPair() (pubKey, privKey string, err error)

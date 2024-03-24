@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_repo.go -package mocks rss_parrot/dal IRepo
+
 const schemaVer = 6
 
 //go:embed scripts/*

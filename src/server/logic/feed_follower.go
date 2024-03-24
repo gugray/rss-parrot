@@ -20,6 +20,8 @@ import (
 	"time"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_feed_follower.go -package mocks rss_parrot/logic IFeedFollower
+
 const feedCheckLoopIdleWakeSec = 60
 
 type FeedStatus int32

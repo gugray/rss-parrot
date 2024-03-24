@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_user_director.go -package mocks rss_parrot/logic IUserDirectory
+
 const pageSize = 2
 const websiteLinkTemplate = "<a href='%s' target='_blank' rel='nofollow noopener noreferrer me' translate='no'>%s</a>"
 

@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_metrics.go -package mocks rss_parrot/logic IMetrics
+
 type IMetrics interface {
 	StartWebRequestIn(label string) IRequestObserver
 	StartApubRequestIn(label string) IRequestObserver
