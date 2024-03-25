@@ -223,7 +223,7 @@ func (hg *apubHandlerGroup) postInbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// DBG
-	//hg.logger.Debug(string(bodyBytes))
+	hg.logger.Debug(string(bodyBytes))
 
 	// First, parse a rudimentary version of the activity to check signature, find out activity type
 	var act dto.ActivityInBase

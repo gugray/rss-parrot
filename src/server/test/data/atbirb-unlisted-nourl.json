@@ -1,0 +1,73 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      "ostatus": "http://ostatus.org#",
+      "atomUri": "ostatus:atomUri",
+      "inReplyToAtomUri": "ostatus:inReplyToAtomUri",
+      "conversation": "ostatus:conversation",
+      "sensitive": "as:sensitive",
+      "toot": "http://joinmastodon.org/ns#",
+      "votersCount": "toot:votersCount"
+    }
+  ],
+  "id": "https://toot.community/users/gaborparrot/statuses/112157462430801395/activity",
+  "type": "Create",
+  "actor": "https://toot.community/users/gaborparrot",
+  "published": "2024-03-25T17:17:41Z",
+  "to": [
+    "https://toot.community/users/gaborparrot/followers"
+  ],
+  "cc": [
+    "https://www.w3.org/ns/activitystreams#Public",
+    "https://rss-parrot.zydeo.net/u/birb"
+  ],
+  "object": {
+    "id": "https://toot.community/users/gaborparrot/statuses/112157462430801395",
+    "type": "Note",
+    "summary": null,
+    "inReplyTo": null,
+    "published": "2024-03-25T17:17:41Z",
+    "url": "https://toot.community/@gaborparrot/112157462430801395",
+    "attributedTo": "https://toot.community/users/gaborparrot",
+    "to": [
+      "https://toot.community/users/gaborparrot/followers"
+    ],
+    "cc": [
+      "https://www.w3.org/ns/activitystreams#Public",
+      "https://rss-parrot.zydeo.net/u/birb"
+    ],
+    "sensitive": false,
+    "atomUri": "https://toot.community/users/gaborparrot/statuses/112157462430801395",
+    "inReplyToAtomUri": null,
+    "conversation": "tag:toot.community,2024-03-25:objectId=134380870:objectType=Conversation",
+    "content": "\u003cp\u003e\u003cspan class=\"h-card\" translate=\"no\"\u003e\u003ca href=\"https://rss-parrot.zydeo.net/u/birb\" class=\"u-url mention\"\u003e@\u003cspan\u003ebirb\u003c/span\u003e\u003c/a\u003e\u003c/span\u003e Henlo\u003c/p\u003e",
+    "contentMap": {
+      "en": "\u003cp\u003e\u003cspan class=\"h-card\" translate=\"no\"\u003e\u003ca href=\"https://rss-parrot.zydeo.net/u/birb\" class=\"u-url mention\"\u003e@\u003cspan\u003ebirb\u003c/span\u003e\u003c/a\u003e\u003c/span\u003e Henlo\u003c/p\u003e"
+    },
+    "attachment": [],
+    "tag": [
+      {
+        "type": "Mention",
+        "href": "https://rss-parrot.zydeo.net/u/birb",
+        "name": "@birb@rss-parrot.zydeo.net"
+      }
+    ],
+    "replies": {
+      "id": "https://toot.community/users/gaborparrot/statuses/112157462430801395/replies",
+      "type": "Collection",
+      "first": {
+        "type": "CollectionPage",
+        "next": "https://toot.community/users/gaborparrot/statuses/112157462430801395/replies?only_other_accounts=true\u0026page=true",
+        "partOf": "https://toot.community/users/gaborparrot/statuses/112157462430801395/replies",
+        "items": []
+      }
+    }
+  },
+  "signature": {
+    "type": "RsaSignature2017",
+    "creator": "https://toot.community/users/gaborparrot#main-key",
+    "created": "2024-03-25T17:17:41Z",
+    "signatureValue": "QcGSMc+JFfuQpBaPgnFnI8mVPQioDNl6msHRuIa5AvsMmzBsas1/F5vXB8TDafS5oiM2tU42aoS+aFxX3S+2bcitmb+k9uZgQe4qBhAJP9Oo918SVh9Zf70WCTbFhVdmdiV80eNlkPyi8ouOqRjy3bKKr2orzP7aancXQjcwQpj+K0oHr5DpUWbBCPE1T+hXl09bpgOobKWId3Y/4cKIYt2iZ/yrOEd6VP2OSwgBEB1FdLIMgGqdtLQdUo1ImlteR3EsKm3VoDOz9UIjNQbPnpA9fYZrJcrf5gJjqWMpQFuImaWC4c4R+qiIzALD/DD1KdKqYBGIvnyFDsxSPMWdww=="
+  }
+}

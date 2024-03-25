@@ -1,0 +1,65 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      "ostatus": "http://ostatus.org#",
+      "atomUri": "ostatus:atomUri",
+      "inReplyToAtomUri": "ostatus:inReplyToAtomUri",
+      "conversation": "ostatus:conversation",
+      "sensitive": "as:sensitive",
+      "toot": "http://joinmastodon.org/ns#",
+      "votersCount": "toot:votersCount"
+    }
+  ],
+  "id": "https://toot.community/users/gaborparrot/statuses/112151287132797657/activity",
+  "type": "Create",
+  "actor": "https://toot.community/users/gaborparrot",
+  "published": "2024-03-24T15:07:13Z",
+  "to": [
+    "https://rss-parrot.zydeo.net/u/birb"
+  ],
+  "cc": [
+
+  ],
+  "object": {
+    "id": "https://toot.community/users/gaborparrot/statuses/112151287132797657",
+    "type": "Note",
+    "summary": null,
+    "inReplyTo": null,
+    "published": "2024-03-24T15:07:13Z",
+    "url": "https://toot.community/@gaborparrot/112151287132797657",
+    "attributedTo": "https://toot.community/users/gaborparrot",
+    "to": [
+      "https://rss-parrot.zydeo.net/u/birb"
+    ],
+    "cc": [
+
+    ],
+    "sensitive": false,
+    "atomUri": "https://toot.community/users/gaborparrot/statuses/112151287132797657",
+    "inReplyToAtomUri": null,
+    "conversation": "tag:toot.community,2024-03-24:objectId=134084562:objectType=Conversation",
+    "content": "<p><span class=\"h-card\" translate=\"no\"><a href=\"https://rss-parrot.zydeo.net/u/birb\" class=\"u-url mention\">@<span>birb</span></a></span> Henlo</p>",
+    "contentMap": {
+      "en": "<p><span class=\"h-card\" translate=\"no\"><a href=\"https://rss-parrot.zydeo.net/u/birb\" class=\"u-url mention\">@<span>birb</span></a></span> Henlo</p>"
+    },
+    "attachment": [],
+    "tag": [
+      {
+        "type": "Mention",
+        "href": "https://rss-parrot.zydeo.net/u/birb",
+        "name": "@birb@rss-parrot.zydeo.net"
+      }
+    ],
+    "replies": {
+      "id": "https://toot.community/users/gaborparrot/statuses/112151287132797657/replies",
+      "type": "Collection",
+      "first": {
+        "type": "CollectionPage",
+        "next": "https://toot.community/users/gaborparrot/statuses/112151287132797657/replies?only_other_accounts=true&page=true",
+        "partOf": "https://toot.community/users/gaborparrot/statuses/112151287132797657/replies",
+        "items": []
+      }
+    }
+  }
+}
