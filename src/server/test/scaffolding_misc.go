@@ -9,13 +9,18 @@ import (
 func setupDummyLogger(mockLogger *mocks.MockILogger) {
 	mockLogger.EXPECT().Error(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Errorf(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Errorf(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Warn(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Warnf(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Warnf(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Info(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Infof(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Infof(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Debug(gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Debugf(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Debugf(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Printf(gomock.Any()).AnyTimes()
+	mockLogger.EXPECT().Printf(gomock.Any(), gomock.Any()).AnyTimes()
 }
 
 func setupFakeTexts(mockTexts *mocks.MockITexts) {
