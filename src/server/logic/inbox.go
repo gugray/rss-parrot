@@ -272,6 +272,20 @@ func (ib *inbox) HandleCreateNote(
 	reqProblem = ""
 	err = nil
 
+	// Parse activity with Note object
+	var act dto.ActivityIn[dto.Note]
+	if jsonErr := json.Unmarshal(bodyBytes, &act); jsonErr != nil {
+		ib.logger.Info("Invalid JSON in Create Note activity body")
+		reqProblem = fmt.Sprintf("Invalid JSON: %d", jsonErr)
+		return
+	}
+
+	// Is this a reply?
+	if act.Object.InReplyTo != nil && *act.Object.InReplyTo != "" {
+		ib.logger.Info("Note is a reply to something; ignoring it.")
+		return
+	}
+
 	// This activity already handled?
 	var alreadyHandled bool
 	alreadyHandled, err = ib.repo.MarkActivityHandled(actBase.Id, time.Now())
@@ -285,13 +299,13 @@ func (ib *inbox) HandleCreateNote(
 
 	// Is it addressed to both me, and "public"?
 	birbUsrUrl := ib.idb.UserUrl(ib.cfg.Birb.User)
-	toMe := false
+	toBirb := false
 	toPublicOrFollowers := false
 	checkAddressee := func(str string) {
 		if str == shared.ActivityPublic || str == senderInfo.Followers {
 			toPublicOrFollowers = true
 		} else if str == birbUsrUrl {
-			toMe = true
+			toBirb = true
 		}
 	}
 	for _, str := range actBase.To {
@@ -302,15 +316,8 @@ func (ib *inbox) HandleCreateNote(
 	}
 
 	// If not addressed to me: simply ignore
-	if !toMe {
-		return
-	}
-
-	// Parse activity with Note object
-	var act dto.ActivityIn[dto.Note]
-	if jsonErr := json.Unmarshal(bodyBytes, &act); jsonErr != nil {
-		ib.logger.Info("Invalid JSON in Create Note activity body")
-		reqProblem = fmt.Sprintf("Invalid JSON: %d", jsonErr)
+	if !toBirb {
+		ib.logger.Info("Note not addressed to the birb; ignoring it.")
 		return
 	}
 

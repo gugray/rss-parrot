@@ -1,0 +1,80 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      "ostatus": "http://ostatus.org#",
+      "atomUri": "ostatus:atomUri",
+      "inReplyToAtomUri": "ostatus:inReplyToAtomUri",
+      "conversation": "ostatus:conversation",
+      "sensitive": "as:sensitive",
+      "toot": "http://joinmastodon.org/ns#",
+      "votersCount": "toot:votersCount"
+    }
+  ],
+  "id": "https://toot.community/users/gaborparrot/statuses/112168656964710984/activity",
+  "type": "Create",
+  "actor": "https://toot.community/users/gaborparrot",
+  "published": "2024-03-27T16:44:36Z",
+  "to": [
+    "https://toot.community/users/gaborparrot/followers"
+  ],
+  "cc": [
+    "https://www.w3.org/ns/activitystreams#Public",
+    "https://rss-parrot.zydeo.net/u/birb",
+    "https://rss-parrot.zydeo.net/u/blogs.esa.int"
+  ],
+  "object": {
+    "id": "https://toot.community/users/gaborparrot/statuses/112168656964710984",
+    "type": "Note",
+    "summary": null,
+    "inReplyTo": "https://rss-parrot.zydeo.net/u/birb/status/1708260028821729053",
+    "published": "2024-03-27T16:44:36Z",
+    "url": "https://toot.community/@gaborparrot/112168656964710984",
+    "attributedTo": "https://toot.community/users/gaborparrot",
+    "to": [
+      "https://toot.community/users/gaborparrot/followers"
+    ],
+    "cc": [
+      "https://www.w3.org/ns/activitystreams#Public",
+      "https://rss-parrot.zydeo.net/u/birb",
+      "https://rss-parrot.zydeo.net/u/blogs.esa.int"
+    ],
+    "sensitive": false,
+    "atomUri": "https://toot.community/users/gaborparrot/statuses/112168656964710984",
+    "inReplyToAtomUri": "https://rss-parrot.zydeo.net/u/birb/status/1708260028821729053",
+    "conversation": "tag:toot.community,2024-02-18:objectId=124341413:objectType=Conversation",
+    "content": "\u003cp\u003e\u003cspan class=\"h-card\" translate=\"no\"\u003e\u003ca href=\"https://rss-parrot.zydeo.net/u/birb\" class=\"u-url mention\"\u003e@\u003cspan\u003ebirb\u003c/span\u003e\u003c/a\u003e\u003c/span\u003e \u003cspan class=\"h-card\" translate=\"no\"\u003e\u003ca href=\"https://rss-parrot.zydeo.net/u/blogs.esa.int\" class=\"u-url mention\"\u003e@\u003cspan\u003eblogs.esa.int\u003c/span\u003e\u003c/a\u003e\u003c/span\u003e Now that\u0026#39;s interesting!\u003c/p\u003e",
+    "contentMap": {
+      "en": "\u003cp\u003e\u003cspan class=\"h-card\" translate=\"no\"\u003e\u003ca href=\"https://rss-parrot.zydeo.net/u/birb\" class=\"u-url mention\"\u003e@\u003cspan\u003ebirb\u003c/span\u003e\u003c/a\u003e\u003c/span\u003e \u003cspan class=\"h-card\" translate=\"no\"\u003e\u003ca href=\"https://rss-parrot.zydeo.net/u/blogs.esa.int\" class=\"u-url mention\"\u003e@\u003cspan\u003eblogs.esa.int\u003c/span\u003e\u003c/a\u003e\u003c/span\u003e Now that\u0026#39;s interesting!\u003c/p\u003e"
+    },
+    "attachment": [],
+    "tag": [
+      {
+        "type": "Mention",
+        "href": "https://rss-parrot.zydeo.net/u/birb",
+        "name": "@birb@rss-parrot.zydeo.net"
+      },
+      {
+        "type": "Mention",
+        "href": "https://rss-parrot.zydeo.net/u/blogs.esa.int",
+        "name": "@blogs.esa.int@rss-parrot.zydeo.net"
+      }
+    ],
+    "replies": {
+      "id": "https://toot.community/users/gaborparrot/statuses/112168656964710984/replies",
+      "type": "Collection",
+      "first": {
+        "type": "CollectionPage",
+        "next": "https://toot.community/users/gaborparrot/statuses/112168656964710984/replies?only_other_accounts=true\u0026page=true",
+        "partOf": "https://toot.community/users/gaborparrot/statuses/112168656964710984/replies",
+        "items": []
+      }
+    }
+  },
+  "signature": {
+    "type": "RsaSignature2017",
+    "creator": "https://toot.community/users/gaborparrot#main-key",
+    "created": "2024-03-27T16:44:36Z",
+    "signatureValue": "cBVSZw1PIpKIzsra3X5anoJgKsirGLHpnuhyaYfdKdQiTLYhLyEwjsXidob/LkGnaqms8Y5i3mtR9xzjlmfsYqxknVMYq4UNPAB2zKE44QDTI4a2Ks8ZsKw2FHORn5lTxovICSl4jwMmTF3o1weIqh07xAggQTfUn+57M+ByzEFXiRNIEUUKudkentI0lAI5oGlKq2vjyWMshosVB3xl/Rab+f0kgBCOxXcJrhxZEMQgXWs/1MHRU8qG+cM94Mq20Drk40gWoY+dAR9tLCOYZflMZccy6P2+ycVxekEEHy68fuuqiHm+fFkGIrRfUGGKiFBRd0fi1cAtXpVZf9j0Gw=="
+  }
+}

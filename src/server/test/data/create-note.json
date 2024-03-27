@@ -10,7 +10,7 @@
     "id": "{{activity-id}}",
     "type": "Note",
     "summary": null,
-    "inReplyTo": null,
+    "inReplyTo": {{inReplyTo}},
     "published": "{{published}}",
     "attributedTo": "{{actor}}",
     "to": {{to}},

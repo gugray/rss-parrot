@@ -61,7 +61,7 @@ func makeCallerUserInfo(host, name, pubKeyPem string) *dto.UserInfo {
 	}
 }
 
-func makeCreateNote(host, name, content string, to, cc []string, tags string) []byte {
+func makeCreateNote(host, name, content string, to, cc []string, inReplyTo *string, tags string) []byte {
 	bytes, err := fs.ReadFile("data/create-note.json")
 	if err != nil {
 		panic(err)
@@ -76,6 +76,11 @@ func makeCreateNote(host, name, content string, to, cc []string, tags string) []
 	json = strings.ReplaceAll(json, "{{published}}", time.Now().UTC().Format(time.RFC3339))
 	json = strings.ReplaceAll(json, "{{content}}", content)
 	json = strings.ReplaceAll(json, "{{tags}}", tags)
+	if inReplyTo == nil {
+		json = strings.ReplaceAll(json, "{{inReplyTo}}", "null")
+	} else {
+		json = strings.ReplaceAll(json, "{{inReplyTo}}", "\""+*inReplyTo+"\"")
+	}
 
 	listToStr := func(list []string) string {
 		if len(list) == 1 {
