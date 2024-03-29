@@ -11,6 +11,8 @@ import (
 	"rss_parrot/shared"
 )
 
+// curl -X POST -H "X-API-KEY: 5QLbv8hrifgdXCEN" 'https://rss-parrot.zydeo.net/api/actions/vacuum'
+
 type apiHandlerGroup struct {
 	cfg    *shared.Config
 	logger shared.ILogger
@@ -41,6 +43,7 @@ func (hg *apiHandlerGroup) GroupDefs() []handlerDef {
 	return []handlerDef{
 		{"POST", "/feeds", func(w http.ResponseWriter, r *http.Request) { hg.postFeeds(w, r) }},
 		{"DELETE", "/accounts/{account}", func(w http.ResponseWriter, r *http.Request) { hg.deleteAccount(w, r) }},
+		{"POST", "/actions/vacuum", func(w http.ResponseWriter, r *http.Request) { hg.postActionsVacuum(w, r) }},
 	}
 }
 
@@ -110,6 +113,20 @@ func (hg *apiHandlerGroup) deleteAccount(w http.ResponseWriter, r *http.Request)
 		msg := fmt.Sprintf("Failed to brute-delete account: %v", err)
 		hg.logger.Error(msg)
 		writeErrorResponse(w, msg, http.StatusInternalServerError)
+		return
+	}
+
+	writeJsonResponse(hg.logger, w, false, "OK")
+}
+
+func (hg *apiHandlerGroup) postActionsVacuum(w http.ResponseWriter, r *http.Request) {
+	var err error
+	hg.logger.Infof("Handling %s %s", r.Method, r.URL.Path)
+
+	if err = hg.repo.Vacuum(); err != nil {
+		msg := fmt.Sprintf("Error vacuuming DB: %v", err)
+		hg.logger.Error(msg)
+		writeErrorResponse(w, msg, http.StatusBadRequest)
 		return
 	}
 

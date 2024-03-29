@@ -449,3 +449,17 @@ func (mr *MockIRepoMockRecorder) UpdateAccountFeedTimes(arg0, arg1, arg2 any) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateAccountFeedTimes", reflect.TypeOf((*MockIRepo)(nil).UpdateAccountFeedTimes), arg0, arg1, arg2)
 }
+
+// Vacuum mocks base method.
+func (m *MockIRepo) Vacuum() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Vacuum")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Vacuum indicates an expected call of Vacuum.
+func (mr *MockIRepoMockRecorder) Vacuum() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Vacuum", reflect.TypeOf((*MockIRepo)(nil).Vacuum))
+}

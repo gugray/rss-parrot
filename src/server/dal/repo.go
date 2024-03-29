@@ -20,6 +20,7 @@ var scripts embed.FS
 
 type IRepo interface {
 	InitUpdateDb()
+	Vacuum() error
 	GetNextId() uint64
 	AddAccountIfNotExist(account *Account, privKey string) (isNew bool, err error)
 	DoesAccountExist(user string) (bool, error)
@@ -174,6 +175,21 @@ func (repo *Repo) mustAddBuiltInUsers() {
 		repo.logger.Errorf("Failed to add built-in user '%s': %v", repo.cfg.Birb.User, err)
 		panic(err)
 	}
+}
+
+func (repo *Repo) Vacuum() error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
+	if _, err := repo.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
+		return err
+	}
+	if _, err := repo.db.Exec(`VACUUM`); err != nil {
+		return err
+	}
+	_, err := repo.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`)
+	return err
 }
 
 func (repo *Repo) AddAccountIfNotExist(acct *Account, privKey string) (isNew bool, err error) {
