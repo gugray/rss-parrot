@@ -99,7 +99,7 @@ func (sender *activitySender) Send(
 
 	if resp.StatusCode >= 300 {
 		msg := fmt.Sprintf("got status %s: response: %s", resp.Status, respBody)
-		sender.logger.Warnf("Activity POST failed: %s", msg)
+		sender.logger.Warnf("Activity POST failed to %s: %s", inboxUrl, msg)
 		return errors.New(msg)
 	}
 
