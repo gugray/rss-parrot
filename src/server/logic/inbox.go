@@ -81,15 +81,60 @@ func (ib *inbox) purgeOldAvititiesLoop() {
 	}
 }
 
+// Mastodon servers send Follow and Undo activities to user inbox
+// GTO sends them to instance inbox, and specifies recipient in 'to' field
+// This function retrieves user from 'to' field; verifies that it's the same as inbox user, if present
+func (ib *inbox) getSingleRecipient(
+	receivingUser string,
+	actTo *[]string) (user, reqProblem string) {
+	user = receivingUser
+	reqProblem = ""
+	if len(*actTo) > 1 {
+		reqProblem = fmt.Sprintf("Expected at most 1 recipient, got %d", len(*actTo))
+		return
+	}
+	if len(*actTo) == 0 {
+		return
+	}
+	to := (*actTo)[0]
+	groups := ib.reUserUrlParser.FindStringSubmatch(to)
+	if groups == nil {
+		reqProblem = fmt.Sprintf("Cannot parse recipient as a URL: %s", to)
+		return
+	}
+	toUser := groups[1]
+	if receivingUser != "" && toUser != receivingUser {
+		reqProblem = fmt.Sprintf("Recipient is %s but request was sent to Inbox of %s", toUser, receivingUser)
+		return
+	}
+	if receivingUser == "" {
+		user = toUser
+	}
+	return
+}
+
 func (ib *inbox) HandleFollow(
 	receivingUser string,
 	senderInfo *dto.UserInfo,
 	bodyBytes []byte) (reqProblem string, err error) {
 
-	ib.logger.Infof("Handling Follow activity to '%s'", receivingUser)
-
-	reqProblem = ""
 	err = nil
+	reqProblem = ""
+	ib.logger.Infof("Handling Follow activity to %s", receivingUser)
+
+	// Unmarshal as Follow activity
+	var actFollow dto.ActivityIn[string]
+	if jsonErr := json.Unmarshal(bodyBytes, &actFollow); jsonErr != nil {
+		ib.logger.Info("Invalid JSON in Follow activity body")
+		reqProblem = fmt.Sprintf("Invalid JSON: %d", jsonErr)
+		return
+	}
+
+	receivingUser, reqProblem = ib.getSingleRecipient(receivingUser, &actFollow.To)
+	if reqProblem != "" {
+		return
+	}
+
 	var account *dal.Account
 	account, err = ib.repo.GetAccount(receivingUser)
 	if err != nil {
@@ -97,14 +142,6 @@ func (ib *inbox) HandleFollow(
 	}
 	if account == nil {
 		reqProblem = fmt.Sprintf("User does not exist: %s", receivingUser)
-		return
-	}
-
-	// Unmarshal as Follow activity
-	var actFollow dto.ActivityIn[string]
-	if jsonErr := json.Unmarshal(bodyBytes, &actFollow); jsonErr != nil {
-		ib.logger.Info("Invalid JSON in Follow activity body")
-		reqProblem = fmt.Sprintf("Invalid JSON: %d", jsonErr)
 		return
 	}
 
@@ -184,15 +221,20 @@ func (ib *inbox) HandleUndo(
 	senderInfo *dto.UserInfo,
 	bodyBytes []byte) (reqProblem string, err error) {
 
-	ib.logger.Infof("Handling Undo activity to %s", receivingUser)
-
 	reqProblem = ""
 	err = nil
+	ib.logger.Infof("Handling Undo activity to %s", receivingUser)
 
+	// Unmarshal as Undo activity
 	var actUndo dto.ActivityIn[dto.ActivityInBase]
 	if jsonErr := json.Unmarshal(bodyBytes, &actUndo); jsonErr != nil {
 		ib.logger.Info("Invalid JSON in Undo activity body")
 		reqProblem = fmt.Sprintf("Invalid JSON: %d", jsonErr)
+		return
+	}
+
+	receivingUser, reqProblem = ib.getSingleRecipient(receivingUser, &actUndo.To)
+	if reqProblem != "" {
 		return
 	}
 
@@ -276,7 +318,7 @@ func (ib *inbox) HandleCreateNote(
 	var act dto.ActivityIn[dto.Note]
 	if jsonErr := json.Unmarshal(bodyBytes, &act); jsonErr != nil {
 		ib.logger.Info("Invalid JSON in Create Note activity body")
-		reqProblem = fmt.Sprintf("Invalid JSON: %d", jsonErr)
+		reqProblem = fmt.Sprintf("Invalid JSON: %v", jsonErr)
 		return
 	}
 

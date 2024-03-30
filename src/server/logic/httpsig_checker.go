@@ -9,10 +9,11 @@ import (
 	"regexp"
 	"rss_parrot/dto"
 	"rss_parrot/shared"
+	"strings"
 )
 
 type IHttpSigChecker interface {
-	Check(w http.ResponseWriter, r *http.Request) (*dto.UserInfo, string, error)
+	Check(actor string, w http.ResponseWriter, r *http.Request) (*dto.UserInfo, string, error)
 }
 
 type httpSigChecker struct {
@@ -26,7 +27,7 @@ func NewHttpSigChecker(logger shared.ILogger, userRetriever IUserRetriever) IHtt
 	return &httpSigChecker{logger, userRetriever, reKeyId}
 }
 
-func (chk *httpSigChecker) Check(w http.ResponseWriter, r *http.Request) (*dto.UserInfo, string, error) {
+func (chk *httpSigChecker) Check(actor string, w http.ResponseWriter, r *http.Request) (*dto.UserInfo, string, error) {
 
 	var err error
 
@@ -37,9 +38,13 @@ func (chk *httpSigChecker) Check(w http.ResponseWriter, r *http.Request) (*dto.U
 	}
 	keyId := groups[1]
 
+	if !strings.HasPrefix(keyId, actor) {
+		return nil, fmt.Sprintf("Actor is not prefix of keyId; actor: %s, keyId: %s", actor, keyId), nil
+	}
+
 	var userInfo *dto.UserInfo
-	if userInfo, err = chk.userRetriever.Retrieve(keyId); err != nil {
-		return nil, fmt.Sprintf("Failed to retrieve user info for keyId: %s: %v", keyId, err), nil
+	if userInfo, err = chk.userRetriever.Retrieve(actor); err != nil {
+		return nil, fmt.Sprintf("Failed to retrieve user info for actor: %s: %v", actor, err), nil
 	}
 
 	verifier, err := httpsig.NewVerifier(r)

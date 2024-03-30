@@ -22,6 +22,14 @@ const (
 	badAuthorization   = "401 Missing or Invalid Authorization Header"
 )
 
+type responseType int
+
+const (
+	rtPlainJson = iota
+	rtActivityJson
+	rtJrdJson
+)
+
 // Defines a single HTTP handler (endpoint)
 type handlerDef struct {
 	method  string
@@ -51,9 +59,11 @@ func acceptsJson(r *http.Request) bool {
 }
 
 // Returns the JSON serialized object as the response body; handles errors.
-func writeJsonResponse(logger shared.ILogger, w http.ResponseWriter, isApub bool, resp interface{}) {
-	if isApub {
+func writeJsonResponse(logger shared.ILogger, w http.ResponseWriter, rt responseType, resp interface{}) {
+	if rt == rtActivityJson {
 		w.Header().Set("Content-Type", "application/activity+json; charset=utf-8")
+	} else if rt == rtJrdJson {
+		w.Header().Set("Content-Type", "application/jrd+json; charset=utf-8")
 	} else {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	}

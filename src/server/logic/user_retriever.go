@@ -3,6 +3,7 @@ package logic
 import (
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-fed/httpsig"
 	"io"
@@ -42,7 +43,7 @@ func (ur *userRetriever) Retrieve(userUrl string) (info *dto.UserInfo, err error
 		return nil, err
 	}
 	ur.userAgent.AddUserAgent(req)
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "application/activity+json")
 	req.Header.Set("host", host)
 	req.Header.Set("date", dateStr)
 
@@ -74,13 +75,23 @@ func (ur *userRetriever) Retrieve(userUrl string) (info *dto.UserInfo, err error
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get user profile; got status %v", resp.StatusCode)
-	}
 
 	var bodyBytes []byte
-	if bodyBytes, err = io.ReadAll(resp.Body); err != nil {
-		return nil, err
+	var bodyErr error
+	bodyBytes, bodyErr = io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		var msg string
+		if bodyErr != nil {
+			msg = fmt.Sprintf("failed to get user profile; got status %v; body: %s", resp.StatusCode, string(bodyBytes))
+		} else {
+			msg = fmt.Sprintf("failed to get user profile; got status %v (no body)", resp.StatusCode)
+		}
+		return nil, errors.New(msg)
+	}
+
+	if bodyErr != nil {
+		return nil, bodyErr
 	}
 
 	var obj dto.UserInfo

@@ -2,6 +2,7 @@ package dto
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -152,7 +153,8 @@ type Note struct {
 	Cc           []string `json:"-"`
 	RawCc        any      `json:"cc"`
 	Content      string   `json:"content"`
-	Tag          *[]Tag   `json:"tag,omitempty"`
+	Tag          *[]Tag   `json:"-"`
+	RawTag       any      `json:"tag,omitempty"`
 }
 
 func (x *Note) UnmarshalJSON(data []byte) error {
@@ -168,6 +170,9 @@ func (x *Note) UnmarshalJSON(data []byte) error {
 	if y.Cc, err = getRecipient(y.RawCc); err != nil {
 		return err
 	}
+	if y.Tag, err = getTag(y.RawTag); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -176,6 +181,7 @@ func (x *Note) MarshalJSON() ([]byte, error) {
 	var y = (*Y)(x)
 	y.RawTo = y.To
 	y.RawCc = y.Cc
+	y.RawTag = y.Tag
 	return json.Marshal(y)
 }
 
@@ -183,4 +189,52 @@ type Tag struct {
 	Type string `json:"type"`
 	Href string `json:"href"`
 	Name string `json:"name"`
+}
+
+func getTag(raw any) (*[]Tag, error) {
+	// No value is legit
+	if raw == nil {
+		return nil, nil
+	}
+
+	retrieve := func(obj *map[string]interface{}) (*Tag, error) {
+		var tag Tag
+		var ok bool
+		if tag.Href, ok = (*obj)["href"].(string); !ok {
+			return nil, errors.New("invalid data in tag's 'href' property; string expected")
+		}
+		if tag.Name, ok = (*obj)["name"].(string); !ok {
+			return nil, errors.New("invalid data in tag's 'name' property; string expected")
+		}
+		if tag.Type, ok = (*obj)["type"].(string); !ok {
+			return nil, errors.New("invalid data in tag's 'type' property; string expected")
+		}
+		return &tag, nil
+	}
+
+	// Single Tag object
+	if obj, ok := raw.(map[string]interface{}); ok {
+		if tag, err := retrieve(&obj); err != nil {
+			return nil, err
+		} else {
+			return &[]Tag{*tag}, nil
+		}
+	}
+	// Array
+	if slice, ok := raw.([]interface{}); ok {
+		var res []Tag
+		for _, s := range slice {
+			if obj, ok := s.(map[string]interface{}); ok {
+				if tag, err := retrieve(&obj); err != nil {
+					return nil, err
+				} else {
+					res = append(res, *tag)
+				}
+			} else {
+				return nil, errors.New("unexpected item in 'tag' array; must only contain tag objects")
+			}
+		}
+		return &res, nil
+	}
+	return nil, errors.New("invalid data in 'tag' property")
 }

@@ -100,8 +100,12 @@ func (m *messenger) EnqueueBroadcast(user string, statusId string, tootedAt time
 	// Collect distinct shared inboxes
 	inboxes := make(map[string]struct{})
 	for _, f := range followers {
-		if _, exists := inboxes[f.SharedInbox]; !exists {
-			inboxes[f.SharedInbox] = struct{}{}
+		inboxName := f.SharedInbox
+		if inboxName == "" {
+			inboxName = f.UserInbox
+		}
+		if _, exists := inboxes[inboxName]; !exists {
+			inboxes[inboxName] = struct{}{}
 		}
 	}
 

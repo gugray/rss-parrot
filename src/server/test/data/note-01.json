@@ -1,0 +1,30 @@
+{
+  "attachment": [],
+  "attributedTo": "https://gts.keysmash.xyz/users/rssparrottest",
+  "content": "\u003cp\u003e\u003cspan class=\"h-card\"\u003e\u003ca href=\"https://rss-parrot.zydeo.net/u/birb\" class=\"u-url mention\" rel=\"nofollow noreferrer noopener\" target=\"_blank\"\u003e@\u003cspan\u003ebirb\u003c/span\u003e\u003c/a\u003e\u003c/span\u003e Henlo\u003c/p\u003e",
+  "contentMap": {
+    "en": "\u003cp\u003e\u003cspan class=\"h-card\"\u003e\u003ca href=\"https://rss-parrot.zydeo.net/u/birb\" class=\"u-url mention\" rel=\"nofollow noreferrer noopener\" target=\"_blank\"\u003e@\u003cspan\u003ebirb\u003c/span\u003e\u003c/a\u003e\u003c/span\u003e Henlo\u003c/p\u003e"
+  },
+  "id": "https://gts.keysmash.xyz/users/rssparrottest/statuses/01HT817Y8JJGQ16QR0XQBN5CDV",
+  "published": "2024-03-30T15:56:51Z",
+  "replies": {
+    "first": {
+      "id": "https://gts.keysmash.xyz/users/rssparrottest/statuses/01HT817Y8JJGQ16QR0XQBN5CDV/replies?page=true",
+      "next": "https://gts.keysmash.xyz/users/rssparrottest/statuses/01HT817Y8JJGQ16QR0XQBN5CDV/replies?only_other_accounts=false\u0026page=true",
+      "partOf": "https://gts.keysmash.xyz/users/rssparrottest/statuses/01HT817Y8JJGQ16QR0XQBN5CDV/replies",
+      "type": "CollectionPage"
+    },
+    "id": "https://gts.keysmash.xyz/users/rssparrottest/statuses/01HT817Y8JJGQ16QR0XQBN5CDV/replies",
+    "type": "Collection"
+  },
+  "sensitive": false,
+  "summary": "",
+  "tag": {
+    "href": "https://rss-parrot.zydeo.net/u/birb",
+    "name": "@birb@rss-parrot.zydeo.net",
+    "type": "Mention"
+  },
+  "to": "https://rss-parrot.zydeo.net/u/birb",
+  "type": "Note",
+  "url": "https://gts.keysmash.xyz/@rssparrottest/statuses/01HT817Y8JJGQ16QR0XQBN5CDV"
+}

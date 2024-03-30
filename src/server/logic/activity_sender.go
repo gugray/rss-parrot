@@ -64,7 +64,7 @@ func (sender *activitySender) Send(
 
 	req, err := http.NewRequest("POST", inboxUrl, bytes.NewBuffer(bodyJson))
 	sender.userAgent.AddUserAgent(req)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/activity+json")
 	req.Header.Set("host", host)
 	req.Header.Set("date", dateStr)
 
