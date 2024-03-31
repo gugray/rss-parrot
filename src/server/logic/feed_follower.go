@@ -613,10 +613,12 @@ func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 		return err
 	}
 
-	if err = ff.PurgeOldPosts(acct, ff.cfg.PostsMinCountKept, ff.cfg.PostsMinDaysKept); err != nil {
-		// If purging errors out: swallow it (updateFeed still succeeds); just log
-		ff.logger.Errorf("Error purging old posts for account %s: %v", acct.Handle, err)
-	}
+	go func() {
+		if err = ff.PurgeOldPosts(acct, ff.cfg.PostsMinCountKept, ff.cfg.PostsMinDaysKept); err != nil {
+			// If purging errors out: swallow it (updateFeed still succeeds); just log
+			ff.logger.Errorf("Error purging old posts for account %s: %v", acct.Handle, err)
+		}
+	}()
 
 	return nil
 }
@@ -626,6 +628,26 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 	if minCount <= 0 || minAgeDays <= 0 {
 		return nil
 	}
+
+	// We're fired off as a goroutine each time a feed has been refreshed
+	// Only run one purge at a time
+	canProceed := false
+	ff.muDeleting.Lock()
+	if !ff.isDeleting {
+		canProceed = true
+		ff.isDeleting = true
+	}
+	ff.muDeleting.Unlock()
+	if !canProceed {
+		return nil
+	}
+	signalDone := func() {
+		ff.muDeleting.Lock()
+		ff.isDeleting = false
+		ff.muDeleting.Unlock()
+	}
+	defer signalDone()
+	time.Sleep(20 * time.Second)
 
 	var err error
 	var posts []*dal.FeedPost
@@ -659,6 +681,7 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 	if len(hashesToDel) == 0 {
 		return nil
 	}
+
 	// Purge 'em
 	ff.logger.Infof("Purging %d old posts from account %s", len(hashesToDel), acct.Handle)
 	if err = ff.repo.PurgePostsAndToots(acct.Id, hashesToDel); err != nil {
@@ -701,7 +724,7 @@ func (ff *feedFollower) purgeUnfollowedAccount(acct *dal.Account) {
 		ff.logger.Errorf("Failed to brute-delete account: %s: %v", acct.Handle, err)
 		return
 	}
-	time.Sleep(30 * time.Second)
+	time.Sleep(20 * time.Second)
 }
 
 func (ff *feedFollower) updateDBSizeMetric() {
