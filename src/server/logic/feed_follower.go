@@ -23,6 +23,7 @@ import (
 //go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_feed_follower.go -package mocks rss_parrot/logic IFeedFollower
 
 const feedCheckLoopIdleWakeSec = 60
+const postPurgeBatchSize = 10
 
 type FeedStatus int32
 
@@ -651,6 +652,9 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 			continue
 		}
 		hashesToDel = append(hashesToDel, post.PostGuidHash)
+		if len(hashesToDel) == postPurgeBatchSize {
+			break
+		}
 	}
 	if len(hashesToDel) == 0 {
 		return nil
