@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_user_agent.go -package mocks rss_parrot/shared IUserAgent
+
 const (
 	versionFileName   = "www/version.txt"
 	userAgentTemplate = "RSS-Parrot-Bot/%s (+https://%s)"

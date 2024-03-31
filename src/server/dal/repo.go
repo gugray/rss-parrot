@@ -32,6 +32,7 @@ type IRepo interface {
 	GetToot(statusId string) (*Toot, error)
 	GetPostCount(user string) (uint, error)
 	GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, error)
+	GetPostsExtract(accountId int) ([]*FeedPost, error)
 	GetFeedLastUpdated(accountId int) (time.Time, error)
 	UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error
 	AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error)
@@ -49,6 +50,7 @@ type IRepo interface {
 	AddTootQueueItem(tqi *TootQueueItem) error
 	GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, int, error)
 	DeleteTootQueueItem(id int) error
+	PurgePostsAndToots(accountId int, postGuidHashes []int64) error
 	MarkActivityHandled(id string, when time.Time) (alreadyHandled bool, err error)
 	DeleteHandledActivities(before time.Time) error
 }
@@ -466,6 +468,33 @@ func (repo *Repo) GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, e
 	return res, nil
 }
 
+func (repo *Repo) GetPostsExtract(accountId int) ([]*FeedPost, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
+	var res []*FeedPost
+	var err error
+
+	query := `SELECT post_guid_hash, post_time FROM feed_posts WHERE account_id=?`
+	rows, err := repo.db.Query(query, accountId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		p := FeedPost{}
+		err = rows.Scan(&p.PostGuidHash, &p.PostTime)
+		if err = rows.Err(); err != nil {
+			return nil, err
+		}
+		res = append(res, &p)
+	}
+	return res, nil
+
+}
+
 func (repo *Repo) GetFollowerCount(user string, onlyApproved bool) (uint, error) {
 
 	repo.muDb.RLock()
@@ -746,6 +775,24 @@ func (repo *Repo) DeleteTootQueueItem(id int) error {
 
 	_, err := repo.db.Exec(`DELETE FROM toot_queue WHERE id=?`, id)
 	return err
+}
+
+func (repo *Repo) PurgePostsAndToots(accountId int, postGuidHashes []int64) error {
+
+	repo.muDb.Lock()
+	defer repo.muDb.Unlock()
+
+	for _, hash := range postGuidHashes {
+		if _, err := repo.db.Exec(`DELETE FROM feed_posts
+       	WHERE account_id=? AND post_guid_hash=?`, accountId, hash); err != nil {
+			return err
+		}
+		if _, err := repo.db.Exec(`DELETE FROM toots
+       	WHERE account_id=? AND post_guid_hash=?`, accountId, hash); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (repo *Repo) MarkActivityHandled(id string, when time.Time) (alreadyHandled bool, err error) {

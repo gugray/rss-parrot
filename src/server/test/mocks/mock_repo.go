@@ -320,6 +320,21 @@ func (mr *MockIRepoMockRecorder) GetPostCount(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostCount", reflect.TypeOf((*MockIRepo)(nil).GetPostCount), arg0)
 }
 
+// GetPostsExtract mocks base method.
+func (m *MockIRepo) GetPostsExtract(arg0 int) ([]*dal.FeedPost, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPostsExtract", arg0)
+	ret0, _ := ret[0].([]*dal.FeedPost)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPostsExtract indicates an expected call of GetPostsExtract.
+func (mr *MockIRepoMockRecorder) GetPostsExtract(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostsExtract", reflect.TypeOf((*MockIRepo)(nil).GetPostsExtract), arg0)
+}
+
 // GetPostsPage mocks base method.
 func (m *MockIRepo) GetPostsPage(arg0, arg1, arg2 int) ([]*dal.FeedPost, error) {
 	m.ctrl.T.Helper()
@@ -406,6 +421,20 @@ func (m *MockIRepo) MarkActivityHandled(arg0 string, arg1 time.Time) (bool, erro
 func (mr *MockIRepoMockRecorder) MarkActivityHandled(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkActivityHandled", reflect.TypeOf((*MockIRepo)(nil).MarkActivityHandled), arg0, arg1)
+}
+
+// PurgePostsAndToots mocks base method.
+func (m *MockIRepo) PurgePostsAndToots(arg0 int, arg1 []int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PurgePostsAndToots", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PurgePostsAndToots indicates an expected call of PurgePostsAndToots.
+func (mr *MockIRepoMockRecorder) PurgePostsAndToots(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PurgePostsAndToots", reflect.TypeOf((*MockIRepo)(nil).PurgePostsAndToots), arg0, arg1)
 }
 
 // RemoveFollower mocks base method.

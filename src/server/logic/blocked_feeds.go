@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+//go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_blocked_feeds.go -package mocks rss_parrot/logic IBlockedFeeds
+
 type IBlockedFeeds interface {
 	IsBlocked(feedUrl string) (bool, error)
 }

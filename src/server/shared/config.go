@@ -25,6 +25,8 @@ type Config struct {
 	BlockedFeedsFile   string         `json:"blocked_feeds_file"`
 	CachePageTemplates bool           `json:"cache_page_templates"`
 	UpdateSchedule     UpdateSchedule `json:"update_schedule"`
+	PostsMinCountKept  int            `json:"posts_min_count_kept"`
+	PostsMinDaysKept   int            `json:"posts_min_days_kept"`
 	FallbackProfilePic string         `json:"fallback_profile_pic"`
 	Birb               *UserInfo      `json:"birb"`
 }

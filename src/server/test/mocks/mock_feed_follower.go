@@ -55,3 +55,17 @@ func (mr *MockIFeedFollowerMockRecorder) GetAccountForFeed(arg0 any) *gomock.Cal
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountForFeed", reflect.TypeOf((*MockIFeedFollower)(nil).GetAccountForFeed), arg0)
 }
+
+// PurgeOldPosts mocks base method.
+func (m *MockIFeedFollower) PurgeOldPosts(arg0 *dal.Account, arg1, arg2 int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PurgeOldPosts", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PurgeOldPosts indicates an expected call of PurgeOldPosts.
+func (mr *MockIFeedFollowerMockRecorder) PurgeOldPosts(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PurgeOldPosts", reflect.TypeOf((*MockIFeedFollower)(nil).PurgeOldPosts), arg0, arg1, arg2)
+}

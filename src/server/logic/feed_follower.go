@@ -41,6 +41,7 @@ const (
 
 type IFeedFollower interface {
 	GetAccountForFeed(urlStr string) (acct *dal.Account, status FeedStatus, err error)
+	PurgeOldPosts(acct *dal.Account, minCount, minAgeDays int) error
 }
 
 type SiteInfo struct {
@@ -611,10 +612,58 @@ func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 		return err
 	}
 
+	if err = ff.PurgeOldPosts(acct, ff.cfg.PostsMinCountKept, ff.cfg.PostsMinDaysKept); err != nil {
+		// If purging errors out: swallow it (updateFeed still succeeds); just log
+		ff.logger.Errorf("Error purging old posts for account %s: %v", acct.Handle, err)
+	}
+
 	return nil
 }
 
-func (ff *feedFollower) loseWeight(acct *dal.Account) {
+func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays int) error {
+
+	if minCount <= 0 || minAgeDays <= 0 {
+		return nil
+	}
+
+	var err error
+	var posts []*dal.FeedPost
+	if posts, err = ff.repo.GetPostsExtract(acct.Id); err != nil {
+		return err
+	}
+	// Fewer than minimum count - nothing to do
+	if len(posts) <= minCount {
+		return nil
+	}
+	// Sort from newest to oldest
+	sort.Slice(posts, func(i, j int) bool {
+		return posts[i].PostTime.After(posts[j].PostTime)
+	})
+	// Check each item from start; if we're past minimum count, mark old enough posts for deletion
+	var hashesToDel []int64
+	now := time.Now().UTC()
+	for i, post := range posts {
+		if i < minCount {
+			continue
+		}
+		postAgeDays := now.Sub(post.PostTime).Hours() / 24.0
+		if postAgeDays < float64(minAgeDays) {
+			continue
+		}
+		hashesToDel = append(hashesToDel, post.PostGuidHash)
+	}
+	if len(hashesToDel) == 0 {
+		return nil
+	}
+	// Purge 'em
+	ff.logger.Infof("Purging %d old posts from account %s", len(hashesToDel), acct.Handle)
+	if err = ff.repo.PurgePostsAndToots(acct.Id, hashesToDel); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ff *feedFollower) purgeUnfollowedAccount(acct *dal.Account) {
 
 	// We're fired off as a goroutine each time there's a deletable account
 	// Only run one account deleting at a time
@@ -718,5 +767,5 @@ func (ff *feedFollower) feedCheckLoopInner() {
 	}
 	// If no error, updateFeed has set next due date for checking
 	// Delete account if no followers; purge old posts
-	go ff.loseWeight(acct)
+	go ff.purgeUnfollowedAccount(acct)
 }
