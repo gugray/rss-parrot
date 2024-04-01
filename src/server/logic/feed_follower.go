@@ -23,7 +23,7 @@ import (
 //go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_feed_follower.go -package mocks rss_parrot/logic IFeedFollower
 
 const feedCheckLoopIdleWakeSec = 60
-const postPurgeBatchSize = 10
+const purgeWaitSec = 20
 
 type FeedStatus int32
 
@@ -647,7 +647,9 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 		ff.muDeleting.Unlock()
 	}
 	defer signalDone()
-	time.Sleep(20 * time.Second)
+	if purgeWaitSec > 0 {
+		time.Sleep(purgeWaitSec * time.Second)
+	}
 
 	var err error
 	var posts []*dal.FeedPost
@@ -674,9 +676,6 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 			continue
 		}
 		hashesToDel = append(hashesToDel, post.PostGuidHash)
-		if len(hashesToDel) == postPurgeBatchSize {
-			break
-		}
 	}
 	if len(hashesToDel) == 0 {
 		return nil
@@ -724,7 +723,9 @@ func (ff *feedFollower) purgeUnfollowedAccount(acct *dal.Account) {
 		ff.logger.Errorf("Failed to brute-delete account: %s: %v", acct.Handle, err)
 		return
 	}
-	time.Sleep(20 * time.Second)
+	if purgeWaitSec > 0 {
+		time.Sleep(purgeWaitSec * time.Second)
+	}
 }
 
 func (ff *feedFollower) updateDBSizeMetric() {

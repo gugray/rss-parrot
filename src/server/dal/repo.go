@@ -782,7 +782,7 @@ func (repo *Repo) PurgePostsAndToots(accountId int, postGuidHashes []int64) erro
 	repo.muDb.Lock()
 	defer repo.muDb.Unlock()
 
-	for _, hash := range postGuidHashes {
+	for i, hash := range postGuidHashes {
 		if _, err := repo.db.Exec(`DELETE FROM feed_posts
        	WHERE account_id=? AND post_guid_hash=?`, accountId, hash); err != nil {
 			return err
@@ -790,6 +790,12 @@ func (repo *Repo) PurgePostsAndToots(accountId int, postGuidHashes []int64) erro
 		if _, err := repo.db.Exec(`DELETE FROM toots
        	WHERE account_id=? AND post_guid_hash=?`, accountId, hash); err != nil {
 			return err
+		}
+
+		// Release lock periodically to let readers proceed
+		if ((i + 1) % 10) == 0 {
+			repo.muDb.Unlock()
+			repo.muDb.Lock()
 		}
 	}
 	return nil
