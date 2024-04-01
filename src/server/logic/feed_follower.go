@@ -23,7 +23,7 @@ import (
 //go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_feed_follower.go -package mocks rss_parrot/logic IFeedFollower
 
 const feedCheckLoopIdleWakeSec = 60
-const purgeWaitSec = 20
+const postCountUpdateSecs = 60
 
 type FeedStatus int32
 
@@ -55,17 +55,18 @@ type SiteInfo struct {
 }
 
 type feedFollower struct {
-	cfg          *shared.Config
-	logger       shared.ILogger
-	userAgent    shared.IUserAgent
-	repo         dal.IRepo
-	blockedFeeds IBlockedFeeds
-	messenger    IMessenger
-	txt          texts.ITexts
-	keyStore     IKeyStore
-	metrics      IMetrics
-	muDeleting   sync.Mutex
-	isDeleting   bool
+	cfg                  *shared.Config
+	logger               shared.ILogger
+	userAgent            shared.IUserAgent
+	repo                 dal.IRepo
+	blockedFeeds         IBlockedFeeds
+	messenger            IMessenger
+	txt                  texts.ITexts
+	keyStore             IKeyStore
+	metrics              IMetrics
+	lastCheckedPostCount time.Time
+	muDeleting           sync.Mutex
+	isDeleting           bool
 }
 
 func NewFeedFollower(
@@ -94,6 +95,7 @@ func NewFeedFollower(
 	}
 
 	ff.updateDBSizeMetric()
+	ff.updateTotalPostsMetric()
 	go ff.feedCheckLoop()
 
 	return &ff
@@ -647,8 +649,8 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 		ff.muDeleting.Unlock()
 	}
 	defer signalDone()
-	if purgeWaitSec > 0 {
-		time.Sleep(purgeWaitSec * time.Second)
+	if ff.cfg.PurgeWaitSec > 0 {
+		time.Sleep(time.Duration(ff.cfg.PurgeWaitSec) * time.Second)
 	}
 
 	var err error
@@ -686,6 +688,7 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 	if err = ff.repo.PurgePostsAndToots(acct.Id, hashesToDel); err != nil {
 		return err
 	}
+	ff.metrics.PostsDeleted(len(hashesToDel))
 	return nil
 }
 
@@ -723,8 +726,8 @@ func (ff *feedFollower) purgeUnfollowedAccount(acct *dal.Account) {
 		ff.logger.Errorf("Failed to brute-delete account: %s: %v", acct.Handle, err)
 		return
 	}
-	if purgeWaitSec > 0 {
-		time.Sleep(purgeWaitSec * time.Second)
+	if ff.cfg.PurgeWaitSec > 0 {
+		time.Sleep(time.Duration(ff.cfg.PurgeWaitSec) * time.Second)
 	}
 }
 
@@ -745,6 +748,21 @@ func (ff *feedFollower) updateDBSizeMetric() {
 	ff.metrics.DbFileSize(fi.Size())
 }
 
+func (ff *feedFollower) updateTotalPostsMetric() {
+	now := time.Now()
+	if now.Sub(ff.lastCheckedPostCount).Seconds() < postCountUpdateSecs {
+		return
+	}
+	ff.lastCheckedPostCount = now
+	ff.logger.Info("Updating total post count metric")
+	if count, err := ff.repo.GetTotalPostCount(); err != nil {
+		ff.logger.Errorf("Error getting total post count: %v", err)
+		return
+	} else {
+		ff.metrics.TotalPosts(int(count))
+	}
+}
+
 func (ff *feedFollower) feedCheckLoop() {
 	for {
 		// This is why we're here
@@ -755,6 +773,7 @@ func (ff *feedFollower) feedCheckLoop() {
 		// Rather a little ugliness here, then all that boilerplate
 		// And we're already also setting the "feed-followers" metrics in this module
 		ff.updateDBSizeMetric()
+		ff.updateTotalPostsMetric()
 	}
 }
 

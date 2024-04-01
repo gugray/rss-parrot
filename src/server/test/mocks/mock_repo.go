@@ -396,6 +396,21 @@ func (mr *MockIRepoMockRecorder) GetTootQueueItems(arg0, arg1 any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTootQueueItems", reflect.TypeOf((*MockIRepo)(nil).GetTootQueueItems), arg0, arg1)
 }
 
+// GetTotalPostCount mocks base method.
+func (m *MockIRepo) GetTotalPostCount() (uint, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTotalPostCount")
+	ret0, _ := ret[0].(uint)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTotalPostCount indicates an expected call of GetTotalPostCount.
+func (mr *MockIRepoMockRecorder) GetTotalPostCount() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTotalPostCount", reflect.TypeOf((*MockIRepo)(nil).GetTotalPostCount))
+}
+
 // InitUpdateDb mocks base method.
 func (m *MockIRepo) InitUpdateDb() {
 	m.ctrl.T.Helper()

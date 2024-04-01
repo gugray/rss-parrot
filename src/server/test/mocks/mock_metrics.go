@@ -111,6 +111,18 @@ func (mr *MockIMetricsMockRecorder) NewPostSaved() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewPostSaved", reflect.TypeOf((*MockIMetrics)(nil).NewPostSaved))
 }
 
+// PostsDeleted mocks base method.
+func (m *MockIMetrics) PostsDeleted(arg0 int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "PostsDeleted", arg0)
+}
+
+// PostsDeleted indicates an expected call of PostsDeleted.
+func (mr *MockIMetricsMockRecorder) PostsDeleted(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostsDeleted", reflect.TypeOf((*MockIMetrics)(nil).PostsDeleted), arg0)
+}
+
 // ServiceStarted mocks base method.
 func (m *MockIMetrics) ServiceStarted() {
 	m.ctrl.T.Helper()
@@ -187,4 +199,16 @@ func (m *MockIMetrics) TotalFollowers(arg0 int) {
 func (mr *MockIMetricsMockRecorder) TotalFollowers(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TotalFollowers", reflect.TypeOf((*MockIMetrics)(nil).TotalFollowers), arg0)
+}
+
+// TotalPosts mocks base method.
+func (m *MockIMetrics) TotalPosts(arg0 int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "TotalPosts", arg0)
+}
+
+// TotalPosts indicates an expected call of TotalPosts.
+func (mr *MockIMetricsMockRecorder) TotalPosts(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TotalPosts", reflect.TypeOf((*MockIMetrics)(nil).TotalPosts), arg0)
 }

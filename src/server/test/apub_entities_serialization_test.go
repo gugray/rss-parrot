@@ -46,3 +46,6 @@ func Test_Deserialize_Note(t *testing.T) {
 	assert.Equal(t, "@birb@rss-parrot.zydeo.net", (*note.Tag)[0].Name)
 	assert.Equal(t, "Mention", (*note.Tag)[0].Type)
 }
+
+//func Test_Foo(t *testing.T) {
+//}

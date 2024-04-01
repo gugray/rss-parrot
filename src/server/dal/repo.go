@@ -31,6 +31,7 @@ type IRepo interface {
 	AddToot(accountId int, toot *Toot) error
 	GetToot(statusId string) (*Toot, error)
 	GetPostCount(user string) (uint, error)
+	GetTotalPostCount() (uint, error)
 	GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, error)
 	GetPostsExtract(accountId int) ([]*FeedPost, error)
 	GetFeedLastUpdated(accountId int) (time.Time, error)
@@ -441,6 +442,20 @@ func (repo *Repo) GetPostCount(user string) (uint, error) {
 	return uint(count), nil
 }
 
+func (repo *Repo) GetTotalPostCount() (uint, error) {
+
+	repo.muDb.RLock()
+	defer repo.muDb.RUnlock()
+
+	row := repo.db.QueryRow(`SELECT COUNT(*) FROM feed_posts`)
+	var err error
+	var count int
+	if err = row.Scan(&count); err != nil {
+		return 0, err
+	}
+	return uint(count), nil
+}
+
 func (repo *Repo) GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, error) {
 
 	repo.muDb.RLock()
@@ -795,6 +810,7 @@ func (repo *Repo) PurgePostsAndToots(accountId int, postGuidHashes []int64) erro
 		// Release lock periodically to let readers proceed
 		if ((i + 1) % 10) == 0 {
 			repo.muDb.Unlock()
+			time.Sleep(time.Duration(repo.cfg.PostDeleteBatchWaitSec) * time.Second)
 			repo.muDb.Lock()
 		}
 	}

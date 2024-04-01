@@ -58,6 +58,8 @@ func fakeTextWithVals(id string, vals map[string]string) string {
 
 func setupDummyMetrics(mockMetrics *mocks.MockIMetrics) {
 	mockMetrics.EXPECT().TotalFollowers(gomock.Any()).AnyTimes()
+	mockMetrics.EXPECT().TotalPosts(gomock.Any()).AnyTimes()
+	mockMetrics.EXPECT().PostsDeleted(gomock.Any()).AnyTimes()
 	mockMetrics.EXPECT().CheckableFeedCount(gomock.Any()).AnyTimes()
 }
 
