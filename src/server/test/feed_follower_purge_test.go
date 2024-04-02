@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type postExtract struct {
+type tootExtract struct {
 	postTime     time.Time
 	postGuidHash int64
 }
@@ -54,12 +54,12 @@ func setupFeedFollowerTest(t *testing.T) (*gomock.Controller, *feedFollowerHarne
 	return ctrl, h, ff
 }
 
-func extractsToPosts(postExtracts []postExtract) []*dal.FeedPost {
-	var res []*dal.FeedPost
+func extractsToToots(postExtracts []tootExtract) []*dal.Toot {
+	var res []*dal.Toot
 	for _, e := range postExtracts {
-		post := dal.FeedPost{
+		post := dal.Toot{
 			PostGuidHash: e.postGuidHash,
-			PostTime:     e.postTime,
+			TootedAt:     e.postTime,
 		}
 		res = append(res, &post)
 	}
@@ -67,7 +67,7 @@ func extractsToPosts(postExtracts []postExtract) []*dal.FeedPost {
 }
 
 func test_Feed_Follower_Purge_Old_Posts(t *testing.T,
-	postExtracts []postExtract, hashesToDel []int64, minCount int) {
+	postExtracts []tootExtract, fromBefore *time.Time, minCount int) {
 
 	// Set up inbox, harness, shared dummies
 	ctrl, h, ff := setupFeedFollowerTest(t)
@@ -81,10 +81,10 @@ func test_Feed_Follower_Purge_Old_Posts(t *testing.T,
 		Handle: "some.site.com.feed",
 	}
 
-	h.mockRepo.EXPECT().GetPostsExtract(gomock.Eq(acct.Id)).Return(extractsToPosts(postExtracts), nil).Times(1)
-	if len(hashesToDel) > 0 {
+	h.mockRepo.EXPECT().GetTootExtracts(gomock.Eq(acct.Id)).Return(extractsToToots(postExtracts), nil).Times(1)
+	if fromBefore != nil {
 		h.mockRepo.EXPECT().
-			PurgePostsAndToots(gomock.Eq(acct.Id), gomock.Cond(checkEqAsSet(hashesToDel))).
+			PurgePostsAndToots(gomock.Eq(acct.Id), gomock.Eq(*fromBefore)).
 			Return(nil).Times(1)
 	}
 
@@ -95,18 +95,15 @@ func test_Feed_Follower_Purge_Old_Posts(t *testing.T,
 
 func Test_Feed_Follower_Purge_Old_Posts_Scenarios(t *testing.T) {
 	now := time.Now().UTC()
-	postExtracts := []postExtract{
+	tootExtracts := []tootExtract{
 		{now.Add(-3 * time.Hour), int64(getNextId())},
 		{now.Add(-52 * time.Hour), int64(getNextId())},
 		{now.Add(-1 * time.Hour), int64(getNextId())},
 		{now.Add(-49 * time.Hour), int64(getNextId())},
 		{now.Add(-2 * time.Hour), int64(getNextId())},
 	}
-	hashesToDel := []int64{}
-	test_Feed_Follower_Purge_Old_Posts(t, postExtracts, hashesToDel, 5)
-	hashesToDel = append(hashesToDel, postExtracts[1].postGuidHash)
-	test_Feed_Follower_Purge_Old_Posts(t, postExtracts, hashesToDel, 4)
-	hashesToDel = append(hashesToDel, postExtracts[3].postGuidHash)
-	test_Feed_Follower_Purge_Old_Posts(t, postExtracts, hashesToDel, 3)
-	test_Feed_Follower_Purge_Old_Posts(t, postExtracts, hashesToDel, 2)
+	test_Feed_Follower_Purge_Old_Posts(t, tootExtracts, nil, 5)
+	test_Feed_Follower_Purge_Old_Posts(t, tootExtracts, &tootExtracts[1].postTime, 4)
+	test_Feed_Follower_Purge_Old_Posts(t, tootExtracts, &tootExtracts[3].postTime, 3)
+	test_Feed_Follower_Purge_Old_Posts(t, tootExtracts, &tootExtracts[3].postTime, 2)
 }

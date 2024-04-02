@@ -320,21 +320,6 @@ func (mr *MockIRepoMockRecorder) GetPostCount(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostCount", reflect.TypeOf((*MockIRepo)(nil).GetPostCount), arg0)
 }
 
-// GetPostsExtract mocks base method.
-func (m *MockIRepo) GetPostsExtract(arg0 int) ([]*dal.FeedPost, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPostsExtract", arg0)
-	ret0, _ := ret[0].([]*dal.FeedPost)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetPostsExtract indicates an expected call of GetPostsExtract.
-func (mr *MockIRepoMockRecorder) GetPostsExtract(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostsExtract", reflect.TypeOf((*MockIRepo)(nil).GetPostsExtract), arg0)
-}
-
 // GetPostsPage mocks base method.
 func (m *MockIRepo) GetPostsPage(arg0, arg1, arg2 int) ([]*dal.FeedPost, error) {
 	m.ctrl.T.Helper()
@@ -378,6 +363,21 @@ func (m *MockIRepo) GetToot(arg0 string) (*dal.Toot, error) {
 func (mr *MockIRepoMockRecorder) GetToot(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetToot", reflect.TypeOf((*MockIRepo)(nil).GetToot), arg0)
+}
+
+// GetTootExtracts mocks base method.
+func (m *MockIRepo) GetTootExtracts(arg0 int) ([]*dal.Toot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTootExtracts", arg0)
+	ret0, _ := ret[0].([]*dal.Toot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTootExtracts indicates an expected call of GetTootExtracts.
+func (mr *MockIRepoMockRecorder) GetTootExtracts(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTootExtracts", reflect.TypeOf((*MockIRepo)(nil).GetTootExtracts), arg0)
 }
 
 // GetTootQueueItems mocks base method.
@@ -439,7 +439,7 @@ func (mr *MockIRepoMockRecorder) MarkActivityHandled(arg0, arg1 any) *gomock.Cal
 }
 
 // PurgePostsAndToots mocks base method.
-func (m *MockIRepo) PurgePostsAndToots(arg0 int, arg1 []int64) error {
+func (m *MockIRepo) PurgePostsAndToots(arg0 int, arg1 time.Time) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PurgePostsAndToots", arg0, arg1)
 	ret0, _ := ret[0].(error)

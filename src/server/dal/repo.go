@@ -33,7 +33,7 @@ type IRepo interface {
 	GetPostCount(user string) (uint, error)
 	GetTotalPostCount() (uint, error)
 	GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, error)
-	GetPostsExtract(accountId int) ([]*FeedPost, error)
+	GetTootExtracts(accountId int) ([]*Toot, error)
 	GetFeedLastUpdated(accountId int) (time.Time, error)
 	UpdateAccountFeedTimes(accountId int, lastUpdated, nextCheckDue time.Time) error
 	AddFeedPostIfNew(accountId int, post *FeedPost) (isNew bool, err error)
@@ -51,7 +51,7 @@ type IRepo interface {
 	AddTootQueueItem(tqi *TootQueueItem) error
 	GetTootQueueItems(aboveId, maxCount int) ([]*TootQueueItem, int, error)
 	DeleteTootQueueItem(id int) error
-	PurgePostsAndToots(accountId int, postGuidHashes []int64) error
+	PurgePostsAndToots(accountId int, fromBefore time.Time) error
 	MarkActivityHandled(id string, when time.Time) (alreadyHandled bool, err error)
 	DeleteHandledActivities(before time.Time) error
 }
@@ -483,15 +483,15 @@ func (repo *Repo) GetPostsPage(accountId int, offset, limit int) ([]*FeedPost, e
 	return res, nil
 }
 
-func (repo *Repo) GetPostsExtract(accountId int) ([]*FeedPost, error) {
+func (repo *Repo) GetTootExtracts(accountId int) ([]*Toot, error) {
 
 	repo.muDb.RLock()
 	defer repo.muDb.RUnlock()
 
-	var res []*FeedPost
+	var res []*Toot
 	var err error
 
-	query := `SELECT post_guid_hash, post_time FROM feed_posts WHERE account_id=?`
+	query := `SELECT post_guid_hash, tooted_at FROM toots WHERE account_id=?`
 	rows, err := repo.db.Query(query, accountId)
 	if err != nil {
 		return nil, err
@@ -499,8 +499,8 @@ func (repo *Repo) GetPostsExtract(accountId int) ([]*FeedPost, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		p := FeedPost{}
-		err = rows.Scan(&p.PostGuidHash, &p.PostTime)
+		p := Toot{}
+		err = rows.Scan(&p.PostGuidHash, &p.TootedAt)
 		if err = rows.Err(); err != nil {
 			return nil, err
 		}
@@ -792,28 +792,20 @@ func (repo *Repo) DeleteTootQueueItem(id int) error {
 	return err
 }
 
-func (repo *Repo) PurgePostsAndToots(accountId int, postGuidHashes []int64) error {
+func (repo *Repo) PurgePostsAndToots(accountId int, fromBefore time.Time) error {
 
 	repo.muDb.Lock()
 	defer repo.muDb.Unlock()
 
-	for i, hash := range postGuidHashes {
-		if _, err := repo.db.Exec(`DELETE FROM feed_posts
-       	WHERE account_id=? AND post_guid_hash=?`, accountId, hash); err != nil {
-			return err
-		}
-		if _, err := repo.db.Exec(`DELETE FROM toots
-       	WHERE account_id=? AND post_guid_hash=?`, accountId, hash); err != nil {
-			return err
-		}
-
-		// Release lock periodically to let readers proceed
-		if ((i + 1) % 10) == 0 {
-			repo.muDb.Unlock()
-			time.Sleep(time.Duration(repo.cfg.PostDeleteBatchWaitSec) * time.Second)
-			repo.muDb.Lock()
-		}
+	if _, err := repo.db.Exec(`DELETE FROM feed_posts
+       	WHERE account_id=? AND post_time<=?`, accountId, fromBefore); err != nil {
+		return err
 	}
+	if _, err := repo.db.Exec(`DELETE FROM toots
+       	WHERE account_id=? AND tooted_at<=?`, accountId, fromBefore); err != nil {
+		return err
+	}
+
 	return nil
 }
 

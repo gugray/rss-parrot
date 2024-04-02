@@ -37,7 +37,8 @@ const (
 )
 
 const (
-	feedOrSiteTimeoutSec = 10
+	feedOrSiteTimeoutSec  = 10
+	allowedFuturePostDays = 2
 )
 
 type IFeedFollower interface {
@@ -340,9 +341,10 @@ type sortedPost struct {
 func getSortedPosts(items []*gofeed.Item, lastKnownFeedUpdated time.Time) ([]sortedPost, time.Time) {
 	var keepers []sortedPost
 	newLastUpdated := lastKnownFeedUpdated
+	futureLimit := time.Now().Add(allowedFuturePostDays * time.Hour * 24)
 
 	for _, itm := range items {
-		keeper, postTime := checkItemTime(itm, lastKnownFeedUpdated)
+		keeper, postTime := checkItemTime(itm, lastKnownFeedUpdated, futureLimit)
 		if !keeper {
 			continue
 		}
@@ -359,7 +361,7 @@ func getSortedPosts(items []*gofeed.Item, lastKnownFeedUpdated time.Time) ([]sor
 	return keepers, newLastUpdated
 }
 
-func checkItemTime(itm *gofeed.Item, latestKown time.Time) (keeper bool, postTime time.Time) {
+func checkItemTime(itm *gofeed.Item, latestKown, futureLimit time.Time) (keeper bool, postTime time.Time) {
 	keeper = false
 	postTime = time.Time{}
 	if itm.PublishedParsed != nil && itm.PublishedParsed.After(latestKown) {
@@ -371,6 +373,11 @@ func checkItemTime(itm *gofeed.Item, latestKown time.Time) (keeper bool, postTim
 		if itm.UpdatedParsed.After(postTime) {
 			postTime = *itm.UpdatedParsed
 		}
+	}
+	// Accept posts a little bit into the future, but not far ahead
+	// Future posts would prevent us from routinely purging old posts
+	if futureLimit.Sub(postTime) < 0 {
+		keeper = false
 	}
 	return
 }
@@ -654,41 +661,45 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 	}
 
 	var err error
-	var posts []*dal.FeedPost
-	if posts, err = ff.repo.GetPostsExtract(acct.Id); err != nil {
+	var toots []*dal.Toot
+	if toots, err = ff.repo.GetTootExtracts(acct.Id); err != nil {
 		return err
 	}
 	// Fewer than minimum count - nothing to do
-	if len(posts) <= minCount {
+	if len(toots) <= minCount {
 		return nil
 	}
 	// Sort from newest to oldest
-	sort.Slice(posts, func(i, j int) bool {
-		return posts[i].PostTime.After(posts[j].PostTime)
+	sort.Slice(toots, func(i, j int) bool {
+		return toots[i].TootedAt.After(toots[j].TootedAt)
 	})
-	// Check each item from start; if we're past minimum count, mark old enough posts for deletion
-	var hashesToDel []int64
+	// Check each item from start; if we're past minimum count, find time of latest toot to delete
+	var fromBefore *time.Time = nil
+	nToDel := 0
 	now := time.Now().UTC()
-	for i, post := range posts {
+	for i, toot := range toots {
 		if i < minCount {
 			continue
 		}
-		postAgeDays := now.Sub(post.PostTime).Hours() / 24.0
-		if postAgeDays < float64(minAgeDays) {
+		tootAgeDays := now.Sub(toot.TootedAt).Hours() / 24.0
+		if tootAgeDays < float64(minAgeDays) {
 			continue
 		}
-		hashesToDel = append(hashesToDel, post.PostGuidHash)
+		fromBefore = &time.Time{}
+		*fromBefore = toot.TootedAt
+		nToDel = len(toots) - i
+		break
 	}
-	if len(hashesToDel) == 0 {
+	if fromBefore == nil {
 		return nil
 	}
 
 	// Purge 'em
-	ff.logger.Infof("Purging %d old posts from account %s", len(hashesToDel), acct.Handle)
-	if err = ff.repo.PurgePostsAndToots(acct.Id, hashesToDel); err != nil {
+	ff.logger.Infof("Purging %d old toots+posts from account %s", nToDel, acct.Handle)
+	if err = ff.repo.PurgePostsAndToots(acct.Id, *fromBefore); err != nil {
 		return err
 	}
-	ff.metrics.PostsDeleted(len(hashesToDel))
+	ff.metrics.PostsDeleted(nToDel)
 	return nil
 }
 
