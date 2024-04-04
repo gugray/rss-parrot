@@ -130,6 +130,7 @@ func (hg *apiHandlerGroup) postActionsVacuum(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	hg.logger.Info("Finished vacuuming")
 	writeJsonResponse(hg.logger, w, rtPlainJson, "OK")
 }
 

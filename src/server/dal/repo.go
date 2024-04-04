@@ -185,13 +185,18 @@ func (repo *Repo) Vacuum() error {
 	repo.muDb.Lock()
 	defer repo.muDb.Unlock()
 
+	repo.logger.Info("Acquired DB lock for vacuuming")
+
 	if _, err := repo.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
 		return err
 	}
+	repo.logger.Info("Executed pre-vacumm checkpoint with truncation")
 	if _, err := repo.db.Exec(`VACUUM`); err != nil {
 		return err
 	}
+	repo.logger.Info("Executed vacuum command")
 	_, err := repo.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`)
+	repo.logger.Info("Executed post-vacumm checkpoint with truncation")
 	return err
 }
 
