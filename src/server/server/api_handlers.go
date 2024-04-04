@@ -120,17 +120,18 @@ func (hg *apiHandlerGroup) deleteAccount(w http.ResponseWriter, r *http.Request)
 }
 
 func (hg *apiHandlerGroup) postActionsVacuum(w http.ResponseWriter, r *http.Request) {
-	var err error
 	hg.logger.Infof("Handling %s %s", r.Method, r.URL.Path)
 
-	if err = hg.repo.Vacuum(); err != nil {
-		msg := fmt.Sprintf("Error vacuuming DB: %v", err)
-		hg.logger.Error(msg)
-		writeErrorResponse(w, msg, http.StatusBadRequest)
-		return
-	}
+	go func() {
+		if err := hg.repo.Vacuum(); err != nil {
+			msg := fmt.Sprintf("Error vacuuming DB: %v", err)
+			hg.logger.Error(msg)
+			writeErrorResponse(w, msg, http.StatusBadRequest)
+			return
+		}
+		hg.logger.Info("Finished vacuuming successfully")
+	}()
 
-	hg.logger.Info("Finished vacuuming")
 	writeJsonResponse(hg.logger, w, rtPlainJson, "OK")
 }
 
