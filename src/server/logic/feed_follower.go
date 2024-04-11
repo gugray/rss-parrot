@@ -622,12 +622,10 @@ func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 		return err
 	}
 
-	go func() {
-		if err = ff.PurgeOldPosts(acct, ff.cfg.PostsMinCountKept, ff.cfg.PostsMinDaysKept); err != nil {
-			// If purging errors out: swallow it (updateFeed still succeeds); just log
-			ff.logger.Errorf("Error purging old posts for account %s: %v", acct.Handle, err)
-		}
-	}()
+	if err = ff.PurgeOldPosts(acct, ff.cfg.PostsMinCountKept, ff.cfg.PostsMinDaysKept); err != nil {
+		// If purging errors out: swallow it (updateFeed still succeeds); just log
+		ff.logger.Errorf("Error purging old posts for account %s: %v", acct.Handle, err)
+	}
 
 	return nil
 }
@@ -636,28 +634,6 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 
 	if minCount <= 0 || minAgeDays <= 0 {
 		return nil
-	}
-
-	// We're fired off as a goroutine each time a feed has been refreshed
-	// Only run one purge at a time
-	canProceed := false
-	ff.muDeleting.Lock()
-	if !ff.isDeleting {
-		canProceed = true
-		ff.isDeleting = true
-	}
-	ff.muDeleting.Unlock()
-	if !canProceed {
-		return nil
-	}
-	signalDone := func() {
-		ff.muDeleting.Lock()
-		ff.isDeleting = false
-		ff.muDeleting.Unlock()
-	}
-	defer signalDone()
-	if ff.cfg.PurgeWaitSec > 0 {
-		time.Sleep(time.Duration(ff.cfg.PurgeWaitSec) * time.Second)
 	}
 
 	var err error
