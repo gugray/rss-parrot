@@ -644,7 +644,7 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 	// Only run one purge at a time
 	canProceed := false
 	ff.muPurgingOldPosts.Lock()
-	if !ff.isPurgingUnfollowed {
+	if !ff.isPurgingOldPosts {
 		canProceed = true
 		ff.isPurgingOldPosts = true
 	}
