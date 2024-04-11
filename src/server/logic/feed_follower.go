@@ -66,8 +66,10 @@ type feedFollower struct {
 	keyStore             IKeyStore
 	metrics              IMetrics
 	lastCheckedPostCount time.Time
-	muDeleting           sync.Mutex
-	isDeleting           bool
+	muPurgingOldPosts    sync.Mutex
+	isPurgingOldPosts    bool
+	muPurgingUnfollowed  sync.Mutex
+	isPurgingUnfollowed  bool
 }
 
 func NewFeedFollower(
@@ -83,16 +85,16 @@ func NewFeedFollower(
 ) IFeedFollower {
 
 	ff := feedFollower{
-		cfg:          cfg,
-		logger:       logger,
-		userAgent:    userAgent,
-		repo:         repo,
-		blockedFeeds: blockedFeeds,
-		messenger:    messenger,
-		txt:          txt,
-		keyStore:     keyStore,
-		metrics:      metrics,
-		isDeleting:   false,
+		cfg:                 cfg,
+		logger:              logger,
+		userAgent:           userAgent,
+		repo:                repo,
+		blockedFeeds:        blockedFeeds,
+		messenger:           messenger,
+		txt:                 txt,
+		keyStore:            keyStore,
+		metrics:             metrics,
+		isPurgingUnfollowed: false,
 	}
 
 	ff.updateDBSizeMetric()
@@ -622,10 +624,12 @@ func (ff *feedFollower) updateFeed(acct *dal.Account) error {
 		return err
 	}
 
-	if err = ff.PurgeOldPosts(acct, ff.cfg.PostsMinCountKept, ff.cfg.PostsMinDaysKept); err != nil {
-		// If purging errors out: swallow it (updateFeed still succeeds); just log
-		ff.logger.Errorf("Error purging old posts for account %s: %v", acct.Handle, err)
-	}
+	go func() {
+		if err = ff.PurgeOldPosts(acct, ff.cfg.PostsMinCountKept, ff.cfg.PostsMinDaysKept); err != nil {
+			// If purging errors out: swallow it (updateFeed still succeeds); just log
+			ff.logger.Errorf("Error purging old posts for account %s: %v", acct.Handle, err)
+		}
+	}()
 
 	return nil
 }
@@ -634,6 +638,28 @@ func (ff *feedFollower) PurgeOldPosts(acct *dal.Account, minCount, minAgeDays in
 
 	if minCount <= 0 || minAgeDays <= 0 {
 		return nil
+	}
+
+	// We're fired off as a goroutine each time a feed has been refreshed
+	// Only run one purge at a time
+	canProceed := false
+	ff.muPurgingOldPosts.Lock()
+	if !ff.isPurgingUnfollowed {
+		canProceed = true
+		ff.isPurgingOldPosts = true
+	}
+	ff.muPurgingOldPosts.Unlock()
+	if !canProceed {
+		return nil
+	}
+	signalDone := func() {
+		ff.muPurgingOldPosts.Lock()
+		ff.isPurgingOldPosts = false
+		ff.muPurgingOldPosts.Unlock()
+	}
+	defer signalDone()
+	if ff.cfg.PurgeWaitSec > 0 {
+		time.Sleep(time.Duration(ff.cfg.PurgeWaitSec) * time.Second)
 	}
 
 	var err error
@@ -684,19 +710,19 @@ func (ff *feedFollower) purgeUnfollowedAccount(acct *dal.Account) {
 	// We're fired off as a goroutine each time there's a deletable account
 	// Only run one account deleting at a time
 	canProceed := false
-	ff.muDeleting.Lock()
-	if !ff.isDeleting {
+	ff.muPurgingUnfollowed.Lock()
+	if !ff.isPurgingUnfollowed {
 		canProceed = true
-		ff.isDeleting = true
+		ff.isPurgingUnfollowed = true
 	}
-	ff.muDeleting.Unlock()
+	ff.muPurgingUnfollowed.Unlock()
 	if !canProceed {
 		return
 	}
 	signalDone := func() {
-		ff.muDeleting.Lock()
-		ff.isDeleting = false
-		ff.muDeleting.Unlock()
+		ff.muPurgingUnfollowed.Lock()
+		ff.isPurgingUnfollowed = false
+		ff.muPurgingUnfollowed.Unlock()
 	}
 	defer signalDone()
 
