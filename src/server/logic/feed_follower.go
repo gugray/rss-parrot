@@ -2,10 +2,6 @@ package logic
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/microcosm-cc/bluemonday"
-	"github.com/mmcdole/gofeed"
-	"github.com/spaolacci/murmur3"
 	"html"
 	"math/rand"
 	"net/http"
@@ -18,6 +14,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/microcosm-cc/bluemonday"
+	"github.com/mmcdole/gofeed"
+	"github.com/spaolacci/murmur3"
 )
 
 //go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_feed_follower.go -package mocks rss_parrot/logic IFeedFollower
@@ -303,9 +304,17 @@ func (ff *feedFollower) updateAccountPosts(
 	// Deal with feed items newer than our last seen
 	// This goes from older to newer
 	keepers, newLastUpdated := getSortedPosts(feed.Items, lastKnownFeedUpdated)
+
+	// We still send toots from before the account was created,
+	// but limit their number to prevent sending a crazy number of toots.
+	oldTootsToSend := 5
+	if !tootNew && len(keepers) > oldTootsToSend {
+		keepers = keepers[len(keepers)-oldTootsToSend:]
+	}
+
 	for _, k := range keepers {
 		fixPodcastLink(k.itm)
-		if err = ff.storePostIfNew(accountId, accountHandle, k.postTime, k.itm, tootNew); err != nil {
+		if err = ff.storePostIfNew(accountId, accountHandle, k.postTime, k.itm, true); err != nil {
 			return
 		}
 	}
