@@ -314,7 +314,7 @@ func (ff *feedFollower) updateAccountPosts(
 
 	for _, k := range keepers {
 		fixPodcastLink(k.itm)
-		if err = ff.storePostIfNew(accountId, accountHandle, k.postTime, k.itm, true); err != nil {
+		if err = ff.storePostIfNew(accountId, accountHandle, k.postTime, k.itm); err != nil {
 			return
 		}
 	}
@@ -429,7 +429,6 @@ func (ff *feedFollower) storePostIfNew(
 	accountHandle string,
 	postTime time.Time,
 	itm *gofeed.Item,
-	tootNew bool,
 ) (err error) {
 	var isNew bool
 	plainTitle := stripHtml(itm.Title)
@@ -446,14 +445,14 @@ func (ff *feedFollower) storePostIfNew(
 	}
 	if isNew {
 		ff.metrics.NewPostSaved()
-		if err = ff.createToot(accountId, accountHandle, itm, tootNew); err != nil {
+		if err = ff.createToot(accountId, accountHandle, itm); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (ff *feedFollower) createToot(accountId int, accountHandle string, itm *gofeed.Item, sendToot bool) error {
+func (ff *feedFollower) createToot(accountId int, accountHandle string, itm *gofeed.Item) error {
 	prettyUrl := itm.Link
 	prettyUrl = strings.TrimPrefix(prettyUrl, "http://")
 	prettyUrl = strings.TrimPrefix(prettyUrl, "https://")
@@ -480,10 +479,8 @@ func (ff *feedFollower) createToot(accountId int, accountHandle string, itm *gof
 	if err != nil {
 		return err
 	}
-	if sendToot {
-		if err = ff.messenger.EnqueueBroadcast(accountHandle, statusId, tootedAt, content); err != nil {
-			return err
-		}
+	if err = ff.messenger.EnqueueBroadcast(accountHandle, statusId, tootedAt, content); err != nil {
+		return err
 	}
 	return nil
 }
