@@ -2,7 +2,7 @@ FROM alpine:latest AS build
 RUN apk update
 RUN apk upgrade
 RUN apk add --update gcc g++
-RUN apk add --no-cache go=go-1.23.5-r0
+RUN apk add --no-cache go=go-1.23.5
 
 WORKDIR /repo
 COPY . /repo
