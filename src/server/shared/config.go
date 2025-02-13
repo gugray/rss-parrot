@@ -23,6 +23,8 @@ type Config struct {
 	Host               string         `json:"host"`
 	DbFile             string         `json:"db_file"`
 	BlockedFeedsFile   string         `json:"blocked_feeds_file"`
+	ProfileDir         string         `json:"profile_dir"`
+	ProfileKeepDays    int            `json:"profile_keep_days"`
 	CachePageTemplates bool           `json:"cache_page_templates"`
 	UpdateSchedule     UpdateSchedule `json:"update_schedule"`
 	PostsMinCountKept  int            `json:"posts_min_count_kept"`

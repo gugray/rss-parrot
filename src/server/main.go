@@ -54,6 +54,7 @@ func main() {
 			logic.NewUserRetriever,
 			logic.NewMessenger,
 			logic.NewInbox,
+			logic.NewProfiler,
 			texts.NewTexts,
 			dal.NewRepo,
 			asHandlerGroupDef(server.NewApubHandlerGroup),
