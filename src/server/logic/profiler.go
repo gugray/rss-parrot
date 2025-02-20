@@ -9,8 +9,10 @@ import (
 	"time"
 )
 
+const startDelaySec = 10
+const profilerLoopSec = 60
+
 type IProfiler interface {
-	SaveProfileAndPurgeOld() error
 }
 
 type profiler struct {
@@ -19,7 +21,13 @@ type profiler struct {
 }
 
 func NewProfiler(cfg *shared.Config) IProfiler {
-	return &profiler{cfg.ProfileDir, cfg.ProfileKeepDays}
+	prof := profiler{cfg.ProfileDir, cfg.ProfileKeepDays}
+	go func() {
+		time.Sleep(startDelaySec * time.Second)
+		prof.profilerLoop()
+	}()
+
+	return &prof
 }
 
 func saveProfile(profileDir string) error {
@@ -50,7 +58,7 @@ func purgeOld(profileDir string, retentionDays int) error {
 	})
 }
 
-func (prof *profiler) SaveProfileAndPurgeOld() error {
+func (prof *profiler) saveProfileAndPurgeOld() error {
 	if err := saveProfile(prof.profileDir); err != nil {
 		return err
 	}
@@ -58,4 +66,11 @@ func (prof *profiler) SaveProfileAndPurgeOld() error {
 		return err
 	}
 	return nil
+}
+
+func (prof *profiler) profilerLoop() {
+	for {
+		_ = prof.saveProfileAndPurgeOld()
+		time.Sleep(profilerLoopSec * time.Second)
+	}
 }

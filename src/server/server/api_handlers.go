@@ -48,7 +48,6 @@ func (hg *apiHandlerGroup) GroupDefs() []handlerDef {
 		{"POST", "/feeds", func(w http.ResponseWriter, r *http.Request) { hg.postFeeds(w, r) }},
 		{"DELETE", "/accounts/{account}", func(w http.ResponseWriter, r *http.Request) { hg.deleteAccount(w, r) }},
 		{"POST", "/actions/vacuum", func(w http.ResponseWriter, r *http.Request) { hg.postActionsVacuum(w, r) }},
-		{"POST", "/actions/pprof", func(w http.ResponseWriter, r *http.Request) { hg.postActionsPprof(w, r) }},
 	}
 }
 
@@ -135,22 +134,6 @@ func (hg *apiHandlerGroup) postActionsVacuum(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		hg.logger.Info("Finished vacuuming successfully")
-	}()
-
-	writeJsonResponse(hg.logger, w, rtPlainJson, "OK")
-}
-
-func (hg *apiHandlerGroup) postActionsPprof(w http.ResponseWriter, r *http.Request) {
-	hg.logger.Infof("Handling %s %s", r.Method, r.URL.Path)
-
-	go func() {
-		if err := hg.prof.SaveProfileAndPurgeOld(); err != nil {
-			msg := fmt.Sprintf("Error saving profille: %v", err)
-			hg.logger.Error(msg)
-			writeErrorResponse(w, msg, http.StatusBadRequest)
-			return
-		}
-		hg.logger.Info("Finished saving profile")
 	}()
 
 	writeJsonResponse(hg.logger, w, rtPlainJson, "OK")

@@ -65,9 +65,8 @@ func main() {
 		fx.Invoke(
 			registerHooks,
 			func(repo dal.IRepo) { repo.InitUpdateDb() },
-			func(*http.Server) {
-				// Empty function needed so server gets instantiated
-			},
+			func(prof logic.IProfiler) {}, // Needed so profiler gets instantiated
+			func(*http.Server) {},         // Needed so server gets instantiated
 			test,
 		),
 		fx.ErrorHook(&initErrorHandler{}),
