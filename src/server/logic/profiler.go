@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"rss_parrot/shared"
+	"runtime"
 	"runtime/pprof"
 	"time"
 )
@@ -39,6 +40,12 @@ func saveProfile(profileDir string) error {
 		return err
 	}
 	defer f.Close()
+
+	numGoroutine := runtime.NumGoroutine()
+	if _, err = fmt.Fprintf(f, "Goroutine count: %d\n\n", numGoroutine); err != nil {
+		return err
+	}
+
 	if err = pprof.Lookup("goroutine").WriteTo(f, 2); err != nil {
 		return err
 	}
