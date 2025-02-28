@@ -154,6 +154,10 @@ func (ff *feedFollower) trimQueryParams(feedUrl *url.URL) {
 	if strings.Contains(feedUrl.Host, "archive.org") {
 		return
 	}
+	// #63: Language Log
+	if strings.Contains(feedUrl.Host, "languagelog.ldc.upenn.edu") {
+		return
+	}
 
 	// Squarespace RSS feeds have `?format=rss` (https://support.squarespace.com/hc/en-us/articles/215761717-Using-RSS-feeds)
 	if strings.Contains(feedUrl.RawQuery, "format=rss") {
