@@ -9,6 +9,7 @@ import (
 //go:generate mockgen --build_flags=--mod=mod -destination ../test/mocks/mock_metrics.go -package mocks rss_parrot/logic IMetrics
 
 type IMetrics interface {
+	CurrentConnections(count int)
 	StartWebRequestIn(label string) IRequestObserver
 	StartApubRequestIn(label string) IRequestObserver
 	StartApubRequestOut(label string) IRequestObserver
@@ -31,6 +32,7 @@ type IRequestObserver interface {
 
 type metrics struct {
 	cfg                *shared.Config
+	currentConnections prometheus.Gauge
 	webRequestsIn      *prometheus.HistogramVec
 	apubRequestsIn     *prometheus.HistogramVec
 	apubRequestsOut    *prometheus.HistogramVec
@@ -51,6 +53,11 @@ func NewMetrics(cfg *shared.Config) IMetrics {
 
 	res := metrics{}
 	res.cfg = cfg
+
+	res.currentConnections = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "current_connections",
+		Help: "Curretly open HTTP client connections",
+	})
 
 	res.webRequestsIn = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "web_requests_in_duration",
@@ -149,6 +156,10 @@ func (ro *requestObserver) Finish() {
 	now := time.Now()
 	elapsed := float64(now.UnixMilli()-ro.start.UnixMilli()) / 1000.0
 	ro.hgvec.WithLabelValues(ro.label).Observe(elapsed)
+}
+
+func (m *metrics) CurrentConnections(count int) {
+	m.currentConnections.Set(float64(count))
 }
 
 func (m *metrics) StartWebRequestIn(label string) IRequestObserver {

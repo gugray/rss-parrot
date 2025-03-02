@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"rss_parrot/logic"
 	"rss_parrot/shared"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 const assetsDir = "/assets"
@@ -18,9 +20,17 @@ const faviconName = "/favicon.ico"
 const chunkSize = 65536
 const strCacheControlHdr = "Cache-Control"
 
-func NewHTTPServer(cfg *shared.Config, logger shared.ILogger, lc fx.Lifecycle, router *mux.Router) *http.Server {
+func NewHTTPServer(cfg *shared.Config,
+	logger shared.ILogger,
+	lc fx.Lifecycle,
+	router *mux.Router,
+	metrics logic.IMetrics,
+) *http.Server {
 	addStr := ":" + strconv.FormatUint(uint64(cfg.ServicePort), 10)
 	srv := &http.Server{Addr: addStr, Handler: trimSlashHandler(router)}
+	srv.ConnState = func(conn net.Conn, state http.ConnState) {
+		handleConnState(metrics, conn, state)
+	}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			listener, err := net.Listen("tcp", srv.Addr)
@@ -37,6 +47,20 @@ func NewHTTPServer(cfg *shared.Config, logger shared.ILogger, lc fx.Lifecycle, r
 		},
 	})
 	return srv
+}
+
+var connCount int32
+
+func handleConnState(metrics logic.IMetrics, conn net.Conn, state http.ConnState) {
+	var newCount int32 = -1
+	if state == http.StateNew {
+		newCount = atomic.AddInt32(&connCount, 1)
+	} else if state == http.StateClosed {
+		newCount = atomic.AddInt32(&connCount, -1)
+	}
+	if newCount != -1 {
+		metrics.CurrentConnections(int(newCount))
+	}
 }
 
 func trimSlashHandler(next http.Handler) http.Handler {
