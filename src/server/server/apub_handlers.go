@@ -150,6 +150,8 @@ func (hg *apubHandlerGroup) getUserStatus(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	note.Context = "https://www.w3.org/ns/activitystreams"
+
 	writeJsonResponse(hg.logger, w, rtActivityJson, note)
 }
 

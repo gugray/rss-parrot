@@ -142,6 +142,7 @@ type ActivityOut struct {
 }
 
 type Note struct {
+	Context      string   `json:"@context,omitempty"`
 	Id           string   `json:"id"`
 	Type         string   `json:"type"`
 	Published    string   `json:"published"`
