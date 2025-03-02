@@ -51,6 +51,18 @@ func (mr *MockIMetricsMockRecorder) CheckableFeedCount(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckableFeedCount", reflect.TypeOf((*MockIMetrics)(nil).CheckableFeedCount), arg0)
 }
 
+// CurrentConnections mocks base method.
+func (m *MockIMetrics) CurrentConnections(arg0 int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CurrentConnections", arg0)
+}
+
+// CurrentConnections indicates an expected call of CurrentConnections.
+func (mr *MockIMetricsMockRecorder) CurrentConnections(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentConnections", reflect.TypeOf((*MockIMetrics)(nil).CurrentConnections), arg0)
+}
+
 // DbFileSize mocks base method.
 func (m *MockIMetrics) DbFileSize(arg0 int64) {
 	m.ctrl.T.Helper()
