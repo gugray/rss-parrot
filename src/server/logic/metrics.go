@@ -58,6 +58,7 @@ func NewMetrics(cfg *shared.Config) IMetrics {
 		Name: "current_connections",
 		Help: "Curretly open HTTP client connections",
 	})
+	_ = prometheus.Register(res.currentConnections)
 
 	res.webRequestsIn = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "web_requests_in_duration",
