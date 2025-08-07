@@ -147,8 +147,11 @@ func (ff *feedFollower) getFeedUrl(siteUrl *url.URL, doc *goquery.Document) stri
 func (ff *feedFollower) trimQueryParams(feedUrl *url.URL) {
 	// The few exceptions where we keep the query param
 	// #33: Youtube feeds look like this: https://www.youtube.com/feeds/videos.xml?channel_id=UCfZz8F37oSJ2rtcEJHM2kCg
-	if strings.Contains(feedUrl.Host, "youtube.com") && strings.Contains(feedUrl.RawQuery, "channel_id") {
-		return
+	// #69: Youtube playlists feeds: https://www.youtube.com/feeds/videos.xml?playlist_id=PL8_lN8JGpWGzorDyFQ5sW-FutcpCTIKHs
+	if strings.Contains(feedUrl.Host, "youtube.com") {
+		if strings.Contains(feedUrl.RawQuery, "channel_id") || strings.Contains(feedUrl.RawQuery, "playlist_id") {
+			return
+		}
 	}
 	// #37: Archive.org: https://archive.org/services/collection-rss.php?collection=misczinespunk
 	if strings.Contains(feedUrl.Host, "archive.org") {
